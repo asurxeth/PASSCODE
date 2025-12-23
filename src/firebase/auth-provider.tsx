@@ -2,17 +2,16 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, type User, auth, isConfigValid } from '@/firebase';
-import { signInAnonymously, type Auth } from 'firebase/auth';
+import { onAuthStateChanged, type User, signInAnonymously } from 'firebase/auth';
+import { auth, isConfigValid } from '@/firebase';
 import { Loader2 } from 'lucide-react';
 
 type AuthContextType = {
   user: User | null;
-  auth: Auth | null;
   loading: boolean;
 };
 
-const AuthContext = createContext<AuthContextType>({ user: null, auth: auth, loading: true });
+const AuthContext = createContext<AuthContextType>({ user: null, loading: true });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -23,6 +22,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
       return;
     }
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUser(user);
@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, auth, loading }}>
+    <AuthContext.Provider value={{ user, loading }}>
       {children}
     </AuthContext.Provider>
   );

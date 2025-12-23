@@ -14,7 +14,9 @@ import { getVerificationAuditLogsSummary } from '@/ai/flows/verification-audit-l
 import { Bot, Search, Loader2, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/firebase/auth-provider';
-import { db, collection, query, where, onSnapshot, doc, getDoc, orderBy, isConfigValid } from '@/firebase';
+import { db, isConfigValid } from '@/firebase/config';
+import { collection, query, onSnapshot, doc, getDoc, orderBy } from 'firebase/firestore';
+
 
 type AuditLog = {
   id: string;

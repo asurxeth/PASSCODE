@@ -11,8 +11,10 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { File, Upload, Loader2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/firebase/auth-provider';
-import { db, storage, onSnapshot, doc, setDoc, collection, serverTimestamp, uploadBytes, ref, getDownloadURL, isConfigValid } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { db, storage, isConfigValid } from '@/firebase/config';
+import { onSnapshot, doc, setDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { uploadBytes, ref, getDownloadURL } from 'firebase/storage';
 
 type UserProfile = {
   fullName: string;

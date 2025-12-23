@@ -12,8 +12,9 @@ import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/firebase/auth-provider';
-import { db, collection, query, where, onSnapshot, doc, getDoc, deleteDoc, isConfigValid } from '@/firebase';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { db, isConfigValid } from '@/firebase/config';
+import { collection, query, where, onSnapshot, doc, getDoc, deleteDoc } from 'firebase/firestore';
 
 type ActiveConsent = {
   id: string; // This will be the kyc_request ID

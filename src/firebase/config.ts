@@ -1,5 +1,8 @@
 
 import { getApp, getApps, initializeApp, type FirebaseOptions } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
+import { getAuth } from 'firebase/auth';
 
 const firebaseConfig: FirebaseOptions = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -11,9 +14,13 @@ const firebaseConfig: FirebaseOptions = {
 };
 
 // Check if the config is populated with actual values
-const isConfigValid = firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith('YOUR_');
+const isConfigValid = !!firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith('YOUR_');
 
 // Initialize Firebase only if the config is valid
 const app = !getApps().length && isConfigValid ? initializeApp(firebaseConfig) : (getApps()[0] || null);
 
-export { app, firebaseConfig, isConfigValid };
+const db = app ? getFirestore(app) : null;
+const storage = app ? getStorage(app) : null;
+const auth = app ? getAuth(app) : null;
+
+export { app, db, storage, auth, firebaseConfig, isConfigValid };

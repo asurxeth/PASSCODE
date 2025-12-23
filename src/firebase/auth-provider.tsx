@@ -2,8 +2,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, type User, signInAnonymously } from 'firebase/auth';
-import { auth, isConfigValid } from '@/firebase';
+import { onAuthStateChanged, type User, signInAnonymously, getAuth } from 'firebase/auth';
+import { isConfigValid } from '@/firebase/config';
 import { Loader2 } from 'lucide-react';
 
 type AuthContextType = {
@@ -18,30 +18,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isConfigValid || !auth) {
+    if (!isConfigValid) {
       setLoading(false);
       return;
     }
-
+    const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUser(user);
         setLoading(false);
       } else {
-        // Only attempt anonymous sign-in if the app is configured
-        // and we haven't already failed.
-        if (isConfigValid) {
-            try {
-              await signInAnonymously(auth);
-            } catch (error: any) {
-              // This can happen if anonymous sign-in isn't enabled in the Firebase console
-              if (error.code !== 'auth/operation-not-allowed') {
-                console.error("Anonymous sign-in failed:", error);
-              }
-              setLoading(false);
-            }
-        } else {
-             setLoading(false);
+        try {
+          const userCredential = await signInAnonymously(auth);
+          setUser(userCredential.user);
+        } catch (error) {
+          console.error("Anonymous sign-in failed:", error);
+        } finally {
+          setLoading(false);
         }
       }
     });

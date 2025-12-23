@@ -11,9 +11,11 @@ import { CheckCircle, XCircle, FileText, Loader2, AlertTriangle, Copy } from 'lu
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/firebase/auth-provider';
-import { db, collection, query, where, onSnapshot, doc, getDoc, deleteDoc, isConfigValid } from '@/firebase';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import QRCode from 'qrcode';
+import { db, isConfigValid } from '@/firebase/config';
+import { collection, query, where, onSnapshot, doc, getDoc, deleteDoc } from 'firebase/firestore';
+
 
 type VerificationRequest = {
   id: string;
@@ -248,8 +250,7 @@ export default function RequestsPage() {
           </div>
           
           <DialogFooter>
-            <Button onClick={() => setShowTokenDialog(false)}>Done</Button>
-          </DialogFooter>
+            <Button onClick={() => setShowTokenDialog(false)}>Done</Button>HDMLFooter>
         </DialogContent>
       </Dialog>
     </AppLayout>

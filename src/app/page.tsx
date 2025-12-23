@@ -10,8 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Award, CheckCircle, Clock, XCircle, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/firebase/auth-provider';
-import { db, onSnapshot, collection, query, where, orderBy, doc, getDoc, isConfigValid } from '@/firebase';
 import { format } from 'date-fns';
+import { db, isConfigValid } from '@/firebase/config';
+import { collection, query, where, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore';
+
 
 type Verification = {
   id: string;

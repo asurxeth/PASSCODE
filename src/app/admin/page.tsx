@@ -8,9 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Users, ShieldCheck, Key, Gift, Loader2, ShieldAlert } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
-import { db, collection, onSnapshot } from '@/firebase';
 import { useAuth } from "@/firebase/auth-provider";
 import { format } from "date-fns";
+import { db } from "@/firebase/config";
+import { collection, onSnapshot } from "firebase/firestore";
 
 function StatCard({ title, value, icon }: { title: string, value: string | number, icon: ReactNode }) {
   return (
@@ -196,4 +197,3 @@ export default function AdminDashboard() {
     </AppLayout>
   );
 }
-

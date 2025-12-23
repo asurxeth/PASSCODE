@@ -4,6 +4,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, type User, auth, isConfigValid } from '@/firebase';
 import { signInAnonymously, type Auth } from 'firebase/auth';
+import { Loader2 } from 'lucide-react';
 
 type AuthContextType = {
   user: User | null;
@@ -37,6 +38,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => unsubscribe();
   }, []);
+
+  if (loading) {
+    return (
+        <div className="flex min-h-screen items-center justify-center">
+            <Loader2 className="h-16 w-16 animate-spin text-primary" />
+        </div>
+    )
+  }
 
   return (
     <AuthContext.Provider value={{ user, auth, loading }}>

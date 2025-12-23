@@ -473,6 +473,53 @@
         "attempts",
         "nextRetryAt"
       ]
+    },
+    "SecurityAlert": {
+      "title": "Security Alert",
+      "description": "An alert for a potential security issue.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["TOKEN_ABUSE", "RATE_LIMIT", "REPLAY", "GEO_ANOMALY"],
+          "description": "The type of security alert."
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "description": "The severity of the alert."
+        },
+        "verifierId": {
+          "type": "string",
+          "description": "A reference to the verifier involved."
+        },
+        "signal": {
+          "type": "object",
+          "description": "The data that triggered the alert."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["open", "acknowledged", "resolved"],
+          "description": "The status of the alert."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the alert was created."
+        },
+        "resolvedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the alert was resolved."
+        }
+      },
+      "required": [
+        "type",
+        "severity",
+        "verifierId",
+        "status",
+        "createdAt"
+      ]
     }
   },
   "auth": {
@@ -540,6 +587,12 @@
         "$ref": "#/entities/WebhookEvent"
       },
       "description": "Stores events to be sent to verifier webhooks."
+    },
+    "/security_alerts/{alertId}": {
+        "schema": {
+            "$ref": "#/entities/SecurityAlert"
+        },
+        "description": "Stores security alerts for administrative review."
     }
   }
 }

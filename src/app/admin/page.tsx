@@ -2,11 +2,11 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Users, ShieldCheck, Key, Gift, Loader2, ShieldAlert } from "lucide-react";
+import { Users, ShieldCheck, Key, Gift, Loader2, ShieldAlert, AlertTriangle } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import { useAuth } from "@/firebase/auth-provider";
 import { format } from "date-fns";
@@ -44,6 +44,94 @@ type Verifier = {
     status: 'approved' | 'pending' | 'suspended';
     createdAt: { seconds: number };
 }
+
+type SecurityAlert = {
+    id: string;
+    type: string;
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    verifierId: string;
+    signal: Record<string, any>;
+    status: 'open' | 'acknowledged' | 'resolved';
+}
+
+function FraudAlerts() {
+  const [alerts, setAlerts] = useState<SecurityAlert[]>([]);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!db) return;
+    const q = collection(db, "security_alerts");
+    const unsubscribe = onSnapshot(q, snap => {
+      const openAlerts = snap.docs
+        .map(d => ({ id: d.id, ...d.data() } as SecurityAlert))
+        .filter(a => a.status === 'open');
+      setAlerts(openAlerts);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const suspendVerifier = (verifierId: string) => {
+    toast({ title: 'Action Required', description: `Suspend action for ${verifierId} needs implementation.` });
+  }
+
+  const resolveAlert = (alertId: string) => {
+     toast({ title: 'Action Required', description: `Resolve action for ${alertId} needs implementation.` });
+  }
+  
+  if (alerts.length === 0) {
+    return null;
+  }
+
+  return (
+     <Card className="rounded-2xl shadow-sm border-destructive">
+        <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="text-destructive" />
+                Active Security Alerts
+            </CardTitle>
+            <CardDescription>Review these critical events and take action immediately.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Severity</TableHead>
+                        <TableHead>Verifier</TableHead>
+                        <TableHead>Details</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {alerts.map((alert) => (
+                        <TableRow key={alert.id} className="hover:bg-destructive/10">
+                            <TableCell className="font-medium">{alert.type.replace(/_/g, ' ')}</TableCell>
+                            <TableCell>
+                                 <Badge 
+                                    variant={
+                                        alert.severity === 'critical' || alert.severity === 'high' ? 'destructive' 
+                                        : 'warning'
+                                    } 
+                                    className="capitalize"
+                                >
+                                    {alert.severity}
+                                </Badge>
+                            </TableCell>
+                            <TableCell className="font-mono text-xs">{alert.verifierId.substring(0,10)}...</TableCell>
+                             <TableCell className="text-xs text-muted-foreground">{alert.signal.failedAttempts} failed attempts from {alert.signal.ip}</TableCell>
+                            <TableCell className="text-right">
+                                <Button variant="destructive" size="sm" onClick={() => suspendVerifier(alert.verifierId)}>Suspend</Button>
+                                <Button variant="outline" size="sm" className="ml-2" onClick={() => resolveAlert(alert.id)}>Resolve</Button>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </CardContent>
+    </Card>
+  );
+}
+
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -144,6 +232,8 @@ export default function AdminDashboard() {
         { !isAllowed ? <AdminUnauthorized /> : (
             <div className="space-y-6">
                 <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+
+                <FraudAlerts />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard title="Total Users" value={stats.users} icon={<Users />} />

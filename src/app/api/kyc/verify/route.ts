@@ -88,6 +88,7 @@ export async function POST(request: Request) {
       kycProfile: kycProfile
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 401 });
+    console.error(`Error in /api/kyc/verify: ${err.message}`);
+    return NextResponse.json({ error: 'An internal error occurred.' }, { status: 500 });
   }
 }

@@ -190,6 +190,7 @@
           "type": "string",
           "enum": [
             "active",
+            "pending",
             "suspended"
           ],
           "description": "The status of the verifier."
@@ -257,7 +258,8 @@
         "verifierId",
         "requestedFields",
         "status",
-        "expiresAt"
+        "expiresAt",
+        "createdAt"
       ]
     },
     "VerificationToken": {
@@ -294,6 +296,11 @@
           "type": "string",
           "format": "date-time",
           "description": "The timestamp when the token was used."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the token was created."
         }
       },
       "required": [
@@ -302,7 +309,8 @@
         "verifierId",
         "tokenHash",
         "used",
-        "expiresAt"
+        "expiresAt",
+        "createdAt"
       ]
     },
     "VerificationLog": {
@@ -325,11 +333,7 @@
         "verifiedFields": {
           "type": "array",
           "items": {
-            "type": "string",
-            "enum": [
-              "name",
-              "dob"
-            ]
+            "type": "string"
           },
           "description": "The fields that were verified."
         },
@@ -525,7 +529,7 @@
       },
       "description": "Stores a user's loyalty points and tier."
     },
-    "/reward_history/{entryId}": {
+    "/reward_history/{entryId}_": {
       "schema": {
         "$ref": "#/entities/RewardHistory"
       },

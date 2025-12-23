@@ -7,12 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { CheckCircle, XCircle, FileText, Loader2, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle, FileText, Loader2, AlertTriangle, Copy } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/firebase/auth-provider';
 import { db, collection, query, where, onSnapshot, doc, getDoc, deleteDoc, isConfigValid } from '@/firebase';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import QRCode from 'qrcode';
 
 type VerificationRequest = {
   id: string;
@@ -31,6 +32,7 @@ export default function RequestsPage() {
   const [selectedRequest, setSelectedRequest] = useState<VerificationRequest | null>(null);
   const [showTokenDialog, setShowTokenDialog] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
 
@@ -72,6 +74,20 @@ export default function RequestsPage() {
     return () => unsubscribe();
   }, [user]);
 
+  const generateQrCode = async (text: string) => {
+    try {
+      const url = await QRCode.toDataURL(text);
+      setQrCodeDataUrl(url);
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: 'QR Code Error',
+        description: 'Could not generate QR code.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleApprove = async (request: VerificationRequest) => {
     if (!user) return;
     setLoading(prev => ({ ...prev, [request.id]: true }));
@@ -95,6 +111,7 @@ export default function RequestsPage() {
         }
 
         setVerificationCode(data.token);
+        await generateQrCode(data.token);
         setShowTokenDialog(true);
         toast({
             title: 'Request Approved',
@@ -128,6 +145,11 @@ export default function RequestsPage() {
     } finally {
         setLoading(prev => ({ ...prev, [requestId]: false }));
     }
+  };
+  
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(verificationCode);
+    toast({ title: 'Copied!', description: 'Verification code copied to clipboard.' });
   };
 
   if (!isConfigValid) {
@@ -208,9 +230,23 @@ export default function RequestsPage() {
               Share this one-time code with <span className="font-bold">{selectedRequest?.platformName}</span>. It will expire in 5 minutes.
             </DialogDescription>
           </DialogHeader>
-          <div className="my-4 flex items-center justify-center bg-muted p-8 rounded-lg">
-            <p className="text-4xl font-bold tracking-widest font-mono">{verificationCode}</p>
+          
+          <div className="my-4 flex flex-col items-center justify-center gap-4 bg-muted p-6 rounded-lg">
+            {qrCodeDataUrl ? (
+              <Image src={qrCodeDataUrl} alt="Verification QR Code" width={200} height={200} />
+            ) : (
+              <div className="h-[200px] flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
+            )}
+            <div className="flex items-center gap-2 bg-background p-2 rounded-md">
+                <p className="text-xl font-bold tracking-widest font-mono">{verificationCode}</p>
+                <Button variant="ghost" size="icon" onClick={copyToClipboard}>
+                    <Copy className="h-5 w-5" />
+                </Button>
+            </div>
           </div>
+          
           <DialogFooter>
             <Button onClick={() => setShowTokenDialog(false)}>Done</Button>
           </DialogFooter>

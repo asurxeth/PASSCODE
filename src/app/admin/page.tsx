@@ -96,6 +96,21 @@ export default function AdminDashboard() {
     return () => unsubscribers.forEach(unsub => unsub());
   }, [isAllowed]);
 
+    const handleApprove = (verifierId: string) => {
+        console.log(`Approving verifier ${verifierId}`);
+        // TODO: Call cloud function
+    };
+    
+    const handleSuspend = (verifierId: string) => {
+        console.log(`Suspending verifier ${verifierId}`);
+        // TODO: Call cloud function
+    };
+
+    const handleRotateKey = (verifierId: string) => {
+        console.log(`Rotating key for verifier ${verifierId}`);
+        // TODO: Call cloud function and display new key
+    };
+
   if (isAllowed === null) {
       return (
           <AppLayout>
@@ -142,9 +157,9 @@ export default function AdminDashboard() {
                                         </TableCell>
                                         <TableCell>{format(new Date(verifier.createdAt.seconds * 1000), "PP")}</TableCell>
                                         <TableCell className="text-right">
-                                            <Button variant="ghost" size="sm" disabled={verifier.status === 'approved'}>Approve</Button>
-                                            <Button variant="ghost" size="sm" disabled={verifier.status === 'suspended'}>Suspend</Button>
-                                            <Button variant="ghost" size="sm">Rotate Key</Button>
+                                            <Button variant="ghost" size="sm" onClick={() => handleApprove(verifier.id)} disabled={verifier.status === 'approved'}>Approve</Button>
+                                            <Button variant="ghost" size="sm" onClick={() => handleSuspend(verifier.id)} disabled={verifier.status === 'suspended'}>Suspend</Button>
+                                            <Button variant="ghost" size="sm" onClick={() => handleRotateKey(verifier.id)}>Rotate Key</Button>
                                         </TableCell>
                                     </TableRow>
                                 ))}

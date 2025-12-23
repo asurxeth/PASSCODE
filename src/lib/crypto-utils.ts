@@ -5,11 +5,13 @@ import { adminDb, adminAuth } from '@/firebase-admin/config';
 import crypto from 'crypto';
 import { FieldValue } from 'firebase-admin/firestore';
 
-export function hashValue(value: string) {
+import crypto from 'crypto';
+
+export async function hashValue(value: string) {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
 
-export function generateToken() {
+export async function generateToken() {
   return crypto.randomBytes(32).toString('hex');
 }
 

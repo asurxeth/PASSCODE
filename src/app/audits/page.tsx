@@ -21,8 +21,9 @@ type AuditLog = {
   requestId: string;
   verifierId: string;
   platformName?: string;
-  timestamp: { seconds: number };
+  timestamp: { seconds: number; nanoseconds: number };
   verifiedFields: string[];
+  userId: string;
 };
 
 type AuditQueryForm = {
@@ -33,15 +34,17 @@ export default function AuditsPage() {
   const { user } = useAuth();
   const [summary, setSummary] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { register, handleSubmit, reset } = useForm<AuditQueryForm>();
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
   useEffect(() => {
-    if (!user || !db) return;
+    if (!db) return;
 
+    // This fetches all logs. For a production app with many users,
+    // you would implement RBAC to only show admins all logs.
     const logsQuery = query(
       collection(db, 'verification_logs'),
-      where('userId', '==', user.uid),
       orderBy('timestamp', 'desc')
     );
 
@@ -49,9 +52,13 @@ export default function AuditsPage() {
       const fetchedLogs = await Promise.all(
         snapshot.docs.map(async (docData) => {
           const log = { id: docData.id, ...docData.data() } as AuditLog;
-          const verifierSnap = await getDoc(doc(db, 'verifiers', log.verifierId));
-          if (verifierSnap.exists()) {
-            log.platformName = verifierSnap.data().name;
+          try {
+            const verifierSnap = await getDoc(doc(db, 'verifiers', log.verifierId));
+            if (verifierSnap.exists()) {
+              log.platformName = verifierSnap.data().name;
+            }
+          } catch(e) {
+            console.error("Could not fetch verifier", e)
           }
           return log;
         })
@@ -60,18 +67,19 @@ export default function AuditsPage() {
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, []);
 
   const onQuerySubmit = async (data: AuditQueryForm) => {
     if (!data.query) return;
     setIsLoading(true);
     setSummary('');
+    setError(null);
     try {
       const result = await getVerificationAuditLogsSummary({ query: data.query });
       setSummary(result.summary);
     } catch (error) {
       console.error(error);
-      setSummary('Sorry, I could not generate a summary. Please try again.');
+      setError('Sorry, I could not generate a summary. Please try again.');
     } finally {
       setIsLoading(false);
       reset();
@@ -120,13 +128,15 @@ export default function AuditsPage() {
                 <span className="sr-only">Query</span>
               </Button>
             </form>
-            { (isLoading || summary) && (
+            { (isLoading || summary || error) && (
               <div className="mt-4 rounded-lg border bg-muted/50 p-4">
                 {isLoading ? (
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span>Generating summary...</span>
                   </div>
+                ) : error ? (
+                   <p className="text-sm text-destructive">{error}</p>
                 ) : (
                   <p className="text-sm whitespace-pre-wrap">{summary}</p>
                 )}
@@ -146,6 +156,7 @@ export default function AuditsPage() {
                   <TableRow>
                     <TableHead>Event</TableHead>
                     <TableHead>Platform</TableHead>
+                    <TableHead>User ID</TableHead>
                     <TableHead>Date & Time</TableHead>
                     <TableHead>Details</TableHead>
                   </TableRow>
@@ -158,7 +169,8 @@ export default function AuditsPage() {
                           KYC Data Shared
                         </Badge>
                       </TableCell>
-                      <TableCell>{log.platformName}</TableCell>
+                      <TableCell>{log.platformName || log.verifierId.substring(0,8)}</TableCell>
+                      <TableCell className="font-mono text-xs">{log.userId}</TableCell>
                       <TableCell>{format(new Date(log.timestamp.seconds * 1000), "PPp")}</TableCell>
                       <TableCell className="text-muted-foreground">{`Shared: ${log.verifiedFields.join(', ')}`}</TableCell>
                     </TableRow>

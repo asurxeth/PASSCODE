@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, type ReactNode } from "react";
@@ -5,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, ShieldCheck, Key, Gift } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
+import { db, collection, onSnapshot, query, where } from '@/firebase';
 
 function StatCard({ title, value, icon }: { title: string, value: string | number, icon: ReactNode }) {
   return (
@@ -29,14 +31,22 @@ export default function AdminDashboard() {
   });
 
   useEffect(() => {
-    // In a real app, you would fetch these stats from your backend.
-    // For now, we are using mock data.
-    setStats({
-      users: 12450,
-      verifiers: 37,
-      verifications: 68210,
-      rewardsIssued: 682100,
-    });
+    if (!db) return;
+
+    const unsubscribers = [
+      onSnapshot(collection(db, "users"), (snap) => setStats(s => ({ ...s, users: snap.size }))),
+      onSnapshot(collection(db, "verifiers"), (snap) => setStats(s => ({ ...s, verifiers: snap.size }))),
+      onSnapshot(collection(db, "verification_logs"), (snap) => setStats(s => ({ ...s, verifications: snap.size }))),
+      onSnapshot(collection(db, "reward_history"), (snap) => {
+        let totalPoints = 0;
+        snap.forEach(doc => {
+            totalPoints += doc.data().pointsEarned || 0;
+        });
+        setStats(s => ({...s, rewardsIssued: totalPoints}))
+      })
+    ];
+
+    return () => unsubscribers.forEach(unsub => unsub());
   }, []);
 
   return (

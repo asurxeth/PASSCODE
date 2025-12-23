@@ -59,7 +59,7 @@ export const retryWebhooks = functions.pubsub
           );
         } else {
           const nextRetry = new Date(
-            Date.now() + attempts * 60000 * Math.pow(2, attempts)
+            Date.now() + 60000 * Math.pow(2, attempts)
           ); // Exponential backoff
 
           await doc.ref.update({

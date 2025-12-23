@@ -1,0 +1,152 @@
+openapi: 3.0.3
+info:
+  title: Passcode Verifier API
+  description: >
+    Passcode provides consent-based KYC verification using one-time tokens.
+    Verifiers request KYC, users approve in-app, and verifiers verify via token.
+  version: 1.0.0
+  contact:
+    name: Passcode API Support
+    email: support@passcode.app
+
+servers:
+  - url: https://{region}-{projectId}.cloudfunctions.net
+    variables:
+      region:
+        default: us-central1
+      projectId:
+        default: studio-7859468000-15ddf
+
+tags:
+  - name: KYC Requests
+  - name: Verification
+
+paths:
+
+  /createKycRequest:
+    post:
+      tags:
+        - KYC Requests
+      summary: Create a KYC verification request
+      description: >
+        Initiates a KYC verification request for a user.
+        The user must approve this request in the Passcode app.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateKycRequest'
+      responses:
+        '200':
+          description: KYC request created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateKycResponse'
+        '401':
+          description: Unauthorized verifier
+        '400':
+          description: Invalid request payload
+
+  /verifyToken:
+    post:
+      tags:
+        - Verification
+      summary: Verify one-time token and fetch KYC
+      description: >
+        Verifies a one-time token shared by the user and returns approved KYC metadata.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyTokenRequest'
+      responses:
+        '200':
+          description: Token verified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyTokenResponse'
+        '400':
+          description: Invalid or expired token
+        '403':
+          description: Verifier mismatch
+        '401':
+          description: Unauthorized verifier
+
+components:
+  schemas:
+
+    CreateKycRequest:
+      type: object
+      required:
+        - apiKey
+        - userId
+        - requestedFields
+      properties:
+        apiKey:
+          type: string
+          description: Verifier-issued API key
+          example: sk_test_xxxxx
+        userId:
+          type: string
+          description: Passcode user UID
+          example: uid_abc123
+        requestedFields:
+          type: array
+          items:
+            type: string
+          example:
+            - name
+            - dob
+            - address
+
+    CreateKycResponse:
+      type: object
+      properties:
+        requestId:
+          type: string
+          example: kyc_req_12345
+
+    VerifyTokenRequest:
+      type: object
+      required:
+        - apiKey
+        - token
+      properties:
+        apiKey:
+          type: string
+          description: Verifier-issued API key
+        token:
+          type: string
+          description: One-time verification token shared by the user
+
+    VerifyTokenResponse:
+      type: object
+      properties:
+        verified:
+          type: boolean
+          example: true
+        kycProfile:
+          $ref: '#/components/schemas/KycProfile'
+
+    KycProfile:
+      type: object
+      properties:
+        kycLevel:
+          type: string
+          enum: [basic, full]
+          example: full
+        documentTypes:
+          type: array
+          items:
+            type: string
+          example:
+            - aadhaar
+            - pan
+        lastVerifiedAt:
+          type: string
+          format: date-time
+          example: 2025-01-01T12:00:00Z

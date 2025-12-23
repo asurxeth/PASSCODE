@@ -49,7 +49,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <SidebarHeader>
           <div className="flex items-center gap-2" data-sidebar="header-content">
             <Logo className="size-7 text-primary" />
-            <h1 className="text-xl font-semibold">KYC Hub</h1>
+            <h1 className="text-xl font-semibold">PASSCODE</h1>
           </div>
         </SidebarHeader>
         <SidebarContent>

@@ -1,12 +1,13 @@
+
 openapi: 3.0.3
 info:
   title: Passcode Verifier API
   description: >
-    Passcode provides consent-based KYC verification using one-time tokens.
+    PASSCODE provides consent-based KYC verification using one-time tokens.
     Verifiers request KYC, users approve in-app, and verifiers verify via token.
   version: 1.0.0
   contact:
-    name: Passcode API Support
+    name: PASSCODE API Support
     email: support@passcode.app
 
 servers:
@@ -30,7 +31,7 @@ paths:
       summary: Create a KYC verification request
       description: >
         Initiates a KYC verification request for a user.
-        The user must approve this request in the Passcode app.
+        The user must approve this request in the PASSCODE app.
       requestBody:
         required: true
         content:
@@ -92,7 +93,7 @@ components:
           example: sk_test_xxxxx
         userId:
           type: string
-          description: Passcode user UID
+          description: PASSCODE user UID
           example: uid_abc123
         requestedFields:
           type: array

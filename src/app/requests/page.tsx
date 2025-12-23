@@ -250,7 +250,8 @@ export default function RequestsPage() {
           </div>
           
           <DialogFooter>
-            <Button onClick={() => setShowTokenDialog(false)}>Done</Button>HDMLFooter>
+            <Button onClick={() => setShowTokenDialog(false)}>Done</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </AppLayout>

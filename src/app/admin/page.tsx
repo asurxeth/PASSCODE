@@ -13,6 +13,8 @@ import { format } from "date-fns";
 import { db } from "@/firebase/config";
 import { collection, onSnapshot, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
+import axios from 'axios';
+
 
 function StatCard({ title, value, icon }: { title: string, value: string | number, icon: ReactNode }) {
   return (
@@ -57,6 +59,7 @@ type SecurityAlert = {
 function FraudAlerts() {
   const [alerts, setAlerts] = useState<SecurityAlert[]>([]);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (!db) return;
@@ -71,22 +74,27 @@ function FraudAlerts() {
   }, []);
 
   const suspendVerifier = async (verifierId: string) => {
-    if (!db) return;
-    const verifierRef = doc(db, "verifiers", verifierId);
+    if (!user) return;
     try {
-      await updateDoc(verifierRef, { status: "suspended" });
-      toast({
-        title: "Verifier Suspended",
-        description: `Verifier ${verifierId} has been suspended.`,
-        variant: "destructive",
-      });
-    } catch (e) {
-      console.error("Failed to suspend verifier:", e);
-      toast({
-        title: "Error",
-        description: "Could not suspend verifier.",
-        variant: "destructive",
-      });
+        const idToken = await user.getIdToken();
+        await axios.post('/api/admin/update-verifier-status', {
+            verifierId,
+            status: 'suspended'
+        }, {
+            headers: { Authorization: `Bearer ${idToken}` }
+        });
+        toast({
+            title: "Verifier Suspended",
+            description: `Verifier ${verifierId} has been suspended.`,
+            variant: "destructive",
+        });
+    } catch (e: any) {
+        console.error("Failed to suspend verifier:", e);
+        toast({
+            title: "Error",
+            description: e.response?.data?.error || "Could not suspend verifier.",
+            variant: "destructive",
+        });
     }
   };
 
@@ -223,20 +231,25 @@ export default function AdminDashboard() {
   }, [isAllowed]);
 
     const updateStatus = async (verifierId: string, status: 'approved' | 'suspended' | 'pending') => {
-        if (!db) return;
-        const verifierRef = doc(db, "verifiers", verifierId);
+        if (!user) return;
         try {
-            await updateDoc(verifierRef, { status });
+            const idToken = await user.getIdToken();
+            await axios.post('/api/admin/update-verifier-status', {
+                verifierId,
+                status
+            }, {
+                headers: { Authorization: `Bearer ${idToken}` }
+            });
             toast({
                 title: 'Success',
                 description: `Verifier status updated to ${status}.`,
                 variant: 'success'
             });
-        } catch(e) {
+        } catch(e: any) {
             console.error(e);
             toast({
                 title: 'Error',
-                description: 'Could not update verifier status.',
+                description: e.response?.data?.error || 'Could not update verifier status.',
                 variant: 'destructive'
             });
         }
@@ -349,4 +362,3 @@ export default function AdminDashboard() {
   );
 }
 
-    

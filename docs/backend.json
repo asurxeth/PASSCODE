@@ -516,7 +516,6 @@
       "required": [
         "type",
         "severity",
-        "verifierId",
         "status",
         "createdAt"
       ]

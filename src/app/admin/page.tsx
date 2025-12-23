@@ -2,12 +2,15 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { Users, ShieldCheck, Key, Gift, Loader2, ShieldAlert } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import { db, collection, onSnapshot } from '@/firebase';
 import { useAuth } from "@/firebase/auth-provider";
+import { format } from "date-fns";
 
 function StatCard({ title, value, icon }: { title: string, value: string | number, icon: ReactNode }) {
   return (
@@ -33,9 +36,17 @@ function AdminUnauthorized() {
     )
 }
 
+type Verifier = {
+    id: string;
+    name: string;
+    status: 'approved' | 'pending' | 'suspended';
+    createdAt: { seconds: number };
+}
+
 export default function AdminDashboard() {
   const { user } = useAuth();
   const [isAllowed, setIsAllowed] = useState<boolean | null>(null);
+  const [verifiers, setVerifiers] = useState<Verifier[]>([]);
   const [stats, setStats] = useState({
     users: 0,
     verifiers: 0,
@@ -67,7 +78,11 @@ export default function AdminDashboard() {
 
     const unsubscribers = [
       onSnapshot(collection(db, "users"), (snap) => setStats(s => ({ ...s, users: snap.size }))),
-      onSnapshot(collection(db, "verifiers"), (snap) => setStats(s => ({ ...s, verifiers: snap.size }))),
+      onSnapshot(collection(db, "verifiers"), (snap) => {
+        setStats(s => ({ ...s, verifiers: snap.size }));
+        const verifierList = snap.docs.map(d => ({id: d.id, ...d.data()} as Verifier));
+        setVerifiers(verifierList);
+      }),
       onSnapshot(collection(db, "verification_logs"), (snap) => setStats(s => ({ ...s, verifications: snap.size }))),
       onSnapshot(collection(db, "reward_history"), (snap) => {
         let totalPoints = 0;
@@ -103,32 +118,67 @@ export default function AdminDashboard() {
                 <StatCard title="Total Verifications" value={stats.verifications} icon={<Key />} />
                 <StatCard title="Reward Points Issued" value={stats.rewardsIssued} icon={<Gift />} />
                 </div>
+                
+                <Card className="rounded-2xl shadow-sm">
+                    <CardHeader>
+                        <CardTitle>Verifier Management</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Company</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead>Created At</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {verifiers.map((verifier) => (
+                                    <TableRow key={verifier.id}>
+                                        <TableCell className="font-medium">{verifier.name}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={verifier.status === 'approved' ? 'success' : verifier.status === 'pending' ? 'warning' : 'destructive'} className="capitalize">{verifier.status}</Badge>
+                                        </TableCell>
+                                        <TableCell>{format(new Date(verifier.createdAt.seconds * 1000), "PP")}</TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="ghost" size="sm" disabled={verifier.status === 'approved'}>Approve</Button>
+                                            <Button variant="ghost" size="sm" disabled={verifier.status === 'suspended'}>Suspend</Button>
+                                            <Button variant="ghost" size="sm">Rotate Key</Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="rounded-2xl shadow-sm">
-                    <CardContent className="p-6">
-                    <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-                    <div className="flex flex-wrap gap-4">
-                        <Button>Manage Verifiers</Button>
-                        <Button variant="outline">View Audit Logs</Button>
-                        <Button variant="outline">Reward Rules</Button>
-                    </div>
-                    </CardContent>
-                </Card>
+                    <Card className="rounded-2xl shadow-sm">
+                        <CardContent className="p-6">
+                        <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
+                        <div className="flex flex-wrap gap-4">
+                            <Button>Manage Verifiers</Button>
+                            <Button variant="outline">View Audit Logs</Button>
+                            <Button variant="outline">Reward Rules</Button>
+                        </div>
+                        </CardContent>
+                    </Card>
 
-                <Card className="rounded-2xl shadow-sm">
-                    <CardContent className="p-6">
-                    <h2 className="text-xl font-semibold mb-4">System Health</h2>
-                    <ul className="space-y-2 text-sm text-muted-foreground">
-                        <li className="flex items-center gap-2"><span className="text-success-foreground bg-success rounded-full p-0.5 leading-none">✔</span> Token verification service: Operational</li>
-                        <li className="flex items-center gap-2"><span className="text-success-foreground bg-success rounded-full p-0.5 leading-none">✔</span> Firebase Auth: Healthy</li>
-                        <li className="flex items-center gap-2"><span className="text-success-foreground bg-success rounded-full p-0.5 leading-none">✔</span> Firestore latency: Normal</li>
-                    </ul>
-                    </CardContent>
-                </Card>
+                    <Card className="rounded-2xl shadow-sm">
+                        <CardContent className="p-6">
+                        <h2 className="text-xl font-semibold mb-4">System Health</h2>
+                        <ul className="space-y-2 text-sm text-muted-foreground">
+                            <li className="flex items-center gap-2"><span className="text-success-foreground bg-success rounded-full p-0.5 leading-none">✔</span> Token verification service: Operational</li>
+                            <li className="flex items-center gap-2"><span className="text-success-foreground bg-success rounded-full p-0.5 leading-none">✔</span> Firebase Auth: Healthy</li>
+                            <li className="flex items-center gap-2"><span className="text-success-foreground bg-success rounded-full p-0.5 leading-none">✔</span> Firestore latency: Normal</li>
+                        </ul>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
         )}
     </AppLayout>
   );
 }
+

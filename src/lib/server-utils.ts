@@ -15,9 +15,7 @@ export async function generateToken() {
 /* —————— VERIFIER AUTH —————— */
 
 export async function authenticateVerifier(apiKey: string) {
-  // We use await here because hashValue is now an async function
   const apiKeyHash = await hashValue(apiKey); 
-
   const snap = await adminDb
     .collection('verifiers')
     .where('apiKeyHash', '==', apiKeyHash)
@@ -28,6 +26,19 @@ export async function authenticateVerifier(apiKey: string) {
   if (snap.empty) {
     throw new Error('Unauthorized verifier');
   }
-
   return snap.docs[0].data();
+}
+
+/* —————— MISSING FUNCTIONS (Add these back!) —————— */
+
+export async function queueWebhook(url: string, payload: any) {
+  // Add your webhook logic here or leave it as a placeholder for now
+  console.log("Webhook queued for:", url);
+  return true;
+}
+
+export async function awardRewards(userId: string, amount: number) {
+  // Add your reward logic here or leave it as a placeholder
+  console.log(`Awarding ${amount} to user ${userId}`);
+  return true;
 }

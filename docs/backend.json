@@ -423,6 +423,52 @@
         "requestId",
         "timestamp"
       ]
+    },
+    "WebhookEvent": {
+      "title": "Webhook Event",
+      "description": "An event to be sent to a verifier's webhook.",
+      "type": "object",
+      "properties": {
+        "verifierId": {
+          "type": "string",
+          "description": "A reference to the verifier."
+        },
+        "callbackUrl": {
+          "type": "string",
+          "description": "The callback URL for the webhook."
+        },
+        "payload": {
+          "type": "object",
+          "description": "The payload to be sent to the webhook."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "success", "failed"],
+          "description": "The status of the webhook event."
+        },
+        "attempts": {
+          "type": "integer",
+          "description": "The number of times the webhook has been attempted."
+        },
+        "nextRetryAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the next retry should occur."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the event was created."
+        }
+      },
+      "required": [
+        "verifierId",
+        "callbackUrl",
+        "payload",
+        "status",
+        "attempts",
+        "nextRetryAt"
+      ]
     }
   },
   "auth": {
@@ -484,6 +530,14 @@
         "$ref": "#/entities/RewardHistory"
       },
       "description": "Stores a history of a user's earned rewards."
+    },
+    "/webhook_events/{eventId}": {
+      "schema": {
+        "$ref": "#/entities/WebhookEvent"
+      },
+      "description": "Stores events to be sent to verifier webhooks."
     }
   }
 }
+
+    

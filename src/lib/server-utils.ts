@@ -1,3 +1,4 @@
+
 'use server';
 
 import { adminDb, adminAuth } from '@/firebase-admin/config';
@@ -67,3 +68,30 @@ export async function awardRewards(userId: string, requestId: string) {
     timestamp: FieldValue.serverTimestamp(),
   });
 }
+
+export async function queueWebhook(verifierId: string, requestId: string) {
+    const verifierSnap = await adminDb.collection('verifiers').doc(verifierId).get();
+    const verifier = verifierSnap.data();
+
+    if (!verifier || !verifier.callbackUrl) {
+        return;
+    }
+
+    const payload = {
+        requestId: requestId,
+        status: 'approved',
+        timestamp: new Date().toISOString(),
+    };
+
+    await adminDb.collection('webhook_events').add({
+        verifierId: verifierId,
+        callbackUrl: verifier.callbackUrl,
+        payload,
+        status: 'pending',
+        attempts: 0,
+        nextRetryAt: FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
+    });
+}
+
+    

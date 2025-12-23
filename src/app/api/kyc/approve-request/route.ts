@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { adminDb, adminAuth } from '@/firebase-admin/config';
-import { generateToken, hashValue } from '@/lib/server-utils';
+import { generateToken, hashValue, queueWebhook } from '@/lib/server-utils';
 import { FieldValue } from 'firebase-admin/firestore';
 
 export async function POST(request: Request) {
@@ -51,11 +51,17 @@ export async function POST(request: Request) {
 
         await requestRef.update({ status: 'approved' });
 
+        // Queue webhook for the verifier
+        await queueWebhook(requestData.verifierId, requestId);
+
         return NextResponse.json({ token });
     } catch (error: any) {
+        console.error("Error during approval:", error);
         if (error.code === 'auth/id-token-expired') {
             return NextResponse.json({ error: 'ID token has expired' }, { status: 401 });
         }
         return NextResponse.json({ error: 'An error occurred during approval' }, { status: 500 });
     }
 }
+
+    

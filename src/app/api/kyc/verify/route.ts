@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/firebase-admin/config';
 import { authenticateVerifier, hashValue, awardRewards } from '@/lib/server-utils';
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
             'ID Number': 'idNumber',
             'Address': 'address',
             'DOB': 'dob',
+            'name': 'fullName',
         };
         const mappedField = fieldMapping[field] || field.toLowerCase();
         if(userProfile[mappedField]) {

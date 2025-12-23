@@ -36,6 +36,12 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
         }
 
+        // Check if verifier is active
+        const verifierSnap = await adminDb.collection('verifiers').doc(requestData?.verifierId).get();
+        if (!verifierSnap.exists || verifierSnap.data()?.status !== 'active') {
+            return NextResponse.json({ error: 'Verifier is not active' }, { status: 403 });
+        }
+
         const token = generateToken();
         const tokenHash = hashValue(token);
 
@@ -63,5 +69,4 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'An error occurred during approval' }, { status: 500 });
     }
 }
-
     

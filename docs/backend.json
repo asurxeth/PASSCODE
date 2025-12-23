@@ -1,0 +1,489 @@
+
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Public profile information for a user.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The user's unique ID."
+        },
+        "fullName": {
+          "type": "string",
+          "description": "The user's full name."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "phone": {
+          "type": "string",
+          "description": "The user's phone number."
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "user"
+          ],
+          "description": "The user's role."
+        },
+        "kycStatus": {
+          "type": "string",
+          "enum": [
+            "verified",
+            "pending",
+            "rejected"
+          ],
+          "description": "The user's KYC status."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the user was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the user was last updated."
+        }
+      },
+      "required": [
+        "uid",
+        "fullName",
+        "email",
+        "role",
+        "kycStatus"
+      ]
+    },
+    "KycProfile": {
+      "title": "KYC Profile",
+      "description": "Encrypted metadata about a user's KYC documents.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "A reference to the user."
+        },
+        "kycLevel": {
+          "type": "string",
+          "enum": [
+            "basic",
+            "full"
+          ],
+          "description": "The user's KYC level."
+        },
+        "documentTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "aadhaar",
+              "pan",
+              "passport"
+            ]
+          },
+          "description": "The types of documents the user has uploaded."
+        },
+        "lastVerifiedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the user's KYC was last verified."
+        },
+        "hash": {
+          "type": "string",
+          "description": "A hash of the KYC data to ensure tamper detection."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the profile was created."
+        }
+      },
+      "required": [
+        "userId",
+        "kycLevel"
+      ]
+    },
+    "KycDocument": {
+      "title": "KYC Document",
+      "description": "A reference to a KYC document in Firebase Storage.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "A reference to the user."
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "aadhaar",
+            "pan",
+            "passport"
+          ],
+          "description": "The type of document."
+        },
+        "storagePath": {
+          "type": "string",
+          "description": "The path to the document in Firebase Storage."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "verified",
+            "pending",
+            "rejected"
+          ],
+          "description": "The status of the document."
+        },
+        "uploadedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the document was uploaded."
+        },
+        "verifiedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the document was verified."
+        }
+      },
+      "required": [
+        "userId",
+        "type",
+        "storagePath",
+        "status"
+      ]
+    },
+    "Verifier": {
+      "title": "Verifier",
+      "description": "A platform that requests KYC data.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the verifier platform."
+        },
+        "apiKeyHash": {
+          "type": "string",
+          "description": "The hashed API key for the verifier."
+        },
+        "callbackUrl": {
+          "type": "string",
+          "description": "The callback URL for the verifier."
+        },
+        "requestedFields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "name",
+              "dob",
+              "id_number",
+              "address"
+            ]
+          },
+          "description": "The fields the verifier is allowed to request."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "suspended"
+          ],
+          "description": "The status of the verifier."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the verifier was created."
+        }
+      },
+      "required": [
+        "name",
+        "apiKeyHash",
+        "status"
+      ]
+    },
+    "KycRequest": {
+      "title": "KYC Request",
+      "description": "A request from a verifier for KYC data.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "A reference to the user."
+        },
+        "verifierId": {
+          "type": "string",
+          "description": "A reference to the verifier."
+        },
+        "requestedFields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "name",
+              "dob",
+              "address"
+            ]
+          },
+          "description": "The fields being requested."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "approved",
+            "rejected",
+            "expired"
+          ],
+          "description": "The status of the request."
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the request expires."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the request was created."
+        }
+      },
+      "required": [
+        "userId",
+        "verifierId",
+        "requestedFields",
+        "status",
+        "expiresAt"
+      ]
+    },
+    "VerificationToken": {
+      "title": "Verification Token",
+      "description": "A one-time code for KYC verification.",
+      "type": "object",
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "description": "A reference to the KYC request."
+        },
+        "userId": {
+          "type": "string",
+          "description": "A reference to the user."
+        },
+        "verifierId": {
+          "type": "string",
+          "description": "A reference to the verifier."
+        },
+        "tokenHash": {
+          "type": "string",
+          "description": "The hashed one-time token."
+        },
+        "used": {
+          "type": "boolean",
+          "description": "Whether the token has been used."
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the token expires."
+        },
+        "usedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the token was used."
+        }
+      },
+      "required": [
+        "requestId",
+        "userId",
+        "verifierId",
+        "tokenHash",
+        "used",
+        "expiresAt"
+      ]
+    },
+    "VerificationLog": {
+      "title": "Verification Log",
+      "description": "An immutable audit trail of verification events.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "A reference to the user."
+        },
+        "verifierId": {
+          "type": "string",
+          "description": "A reference to the verifier."
+        },
+        "requestId": {
+          "type": "string",
+          "description": "A reference to the KYC request."
+        },
+        "verifiedFields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "name",
+              "dob"
+            ]
+          },
+          "description": "The fields that were verified."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp of the verification."
+        },
+        "ipAddress": {
+          "type": "string",
+          "description": "The IP address of the verifier."
+        }
+      },
+      "required": [
+        "userId",
+        "verifierId",
+        "requestId",
+        "timestamp"
+      ]
+    },
+    "Reward": {
+      "title": "Reward",
+      "description": "A user's loyalty points and tier.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "A reference to the user."
+        },
+        "points": {
+          "type": "integer",
+          "description": "The user's loyalty points."
+        },
+        "tier": {
+          "type": "string",
+          "enum": [
+            "bronze",
+            "silver",
+            "gold"
+          ],
+          "description": "The user's loyalty tier."
+        },
+        "totalVerifications": {
+          "type": "integer",
+          "description": "The total number of verifications for the user."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the rewards were last updated."
+        }
+      },
+      "required": [
+        "userId",
+        "points",
+        "tier",
+        "totalVerifications"
+      ]
+    },
+    "RewardHistory": {
+      "title": "Reward History",
+      "description": "A history of a user's earned rewards.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "A reference to the user."
+        },
+        "pointsEarned": {
+          "type": "integer",
+          "description": "The number of points earned."
+        },
+        "reason": {
+          "type": "string",
+          "description": "The reason for earning the points."
+        },
+        "requestId": {
+          "type": "string",
+          "description": "A reference to the KYC request."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the points were earned."
+        }
+      },
+      "required": [
+        "userId",
+        "pointsEarned",
+        "reason",
+        "requestId",
+        "timestamp"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Stores public profile information for each user."
+    },
+    "/kyc_profiles/{userId}": {
+      "schema": {
+        "$ref": "#/entities/KycProfile"
+      },
+      "description": "Stores encrypted metadata about a user's KYC documents."
+    },
+    "/kyc_documents/{docId}": {
+      "schema": {
+        "$ref": "#/entities/KycDocument"
+      },
+      "description": "Stores references to KYC documents in Firebase Storage."
+    },
+    "/verifiers/{verifierId}": {
+      "schema": {
+        "$ref": "#/entities/Verifier"
+      },
+      "description": "Stores information about platforms that request KYC data."
+    },
+    "/kyc_requests/{requestId}": {
+      "schema": {
+        "$ref": "#/entities/KycRequest"
+      },
+      "description": "Stores consent requests from verifiers for user KYC data."
+    },
+    "/verification_tokens/{tokenId}": {
+      "schema": {
+        "$ref": "#/entities/VerificationToken"
+      },
+      "description": "Stores one-time codes for KYC verification."
+    },
+    "/verification_logs/{logId}": {
+      "schema": {
+        "$ref": "#/entities/VerificationLog"
+      },
+      "description": "Stores an immutable audit trail of verification events."
+    },
+    "/rewards/{userId}": {
+      "schema": {
+        "$ref": "#/entities/Reward"
+      },
+      "description": "Stores a user's loyalty points and tier."
+    },
+    "/reward_history/{entryId}": {
+      "schema": {
+        "$ref": "#/entities/RewardHistory"
+      },
+      "description": "Stores a history of a user's earned rewards."
+    }
+  }
+}

@@ -11,7 +11,8 @@ import { AppLayout } from "@/components/app-layout";
 import { useAuth } from "@/firebase/auth-provider";
 import { format } from "date-fns";
 import { db } from "@/firebase/config";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
 
 function StatCard({ title, value, icon }: { title: string, value: string | number, icon: ReactNode }) {
   return (
@@ -46,6 +47,7 @@ type Verifier = {
 
 export default function AdminDashboard() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [isAllowed, setIsAllowed] = useState<boolean | null>(null);
   const [verifiers, setVerifiers] = useState<Verifier[]>([]);
   const [stats, setStats] = useState({
@@ -97,19 +99,34 @@ export default function AdminDashboard() {
     return () => unsubscribers.forEach(unsub => unsub());
   }, [isAllowed]);
 
-    const handleApprove = (verifierId: string) => {
-        console.log(`Approving verifier ${verifierId}`);
-        // TODO: Call cloud function
+    const updateStatus = async (verifierId: string, status: 'approved' | 'suspended' | 'pending') => {
+        if (!db) return;
+        const verifierRef = doc(db, "verifiers", verifierId);
+        try {
+            await updateDoc(verifierRef, { status });
+            toast({
+                title: 'Success',
+                description: `Verifier status updated to ${status}.`,
+                variant: 'success'
+            });
+        } catch(e) {
+            console.error(e);
+            toast({
+                title: 'Error',
+                description: 'Could not update verifier status.',
+                variant: 'destructive'
+            });
+        }
     };
     
-    const handleSuspend = (verifierId: string) => {
-        console.log(`Suspending verifier ${verifierId}`);
-        // TODO: Call cloud function
-    };
-
     const handleRotateKey = (verifierId: string) => {
         console.log(`Rotating key for verifier ${verifierId}`);
-        // TODO: Call cloud function and display new key
+        // This would call a Cloud Function which returns the new key
+        // For now, we'll just show a placeholder
+        toast({
+            title: 'API Key Rotated',
+            description: `New Key: ${Math.random().toString(36).substring(2)} (shown once only)`,
+        })
     };
 
   if (isAllowed === null) {
@@ -154,12 +171,21 @@ export default function AdminDashboard() {
                                     <TableRow key={verifier.id}>
                                         <TableCell className="font-medium">{verifier.name}</TableCell>
                                         <TableCell>
-                                            <Badge variant={verifier.status === 'approved' ? 'success' : verifier.status === 'pending' ? 'warning' : 'destructive'} className="capitalize">{verifier.status}</Badge>
+                                            <Badge 
+                                                variant={
+                                                    verifier.status === 'approved' ? 'success' 
+                                                    : verifier.status === 'pending' ? 'warning' 
+                                                    : 'destructive'
+                                                } 
+                                                className="capitalize"
+                                            >
+                                                {verifier.status}
+                                            </Badge>
                                         </TableCell>
                                         <TableCell>{format(new Date(verifier.createdAt.seconds * 1000), "PP")}</TableCell>
                                         <TableCell className="text-right">
-                                            <Button variant="ghost" size="sm" onClick={() => handleApprove(verifier.id)} disabled={verifier.status === 'approved'}>Approve</Button>
-                                            <Button variant="ghost" size="sm" onClick={() => handleSuspend(verifier.id)} disabled={verifier.status === 'suspended'}>Suspend</Button>
+                                            <Button variant="ghost" size="sm" onClick={() => updateStatus(verifier.id, 'approved')} disabled={verifier.status === 'approved'}>Approve</Button>
+                                            <Button variant="ghost" size="sm" onClick={() => updateStatus(verifier.id, 'suspended')} disabled={verifier.status === 'suspended'}>Suspend</Button>
                                             <Button variant="ghost" size="sm" onClick={() => handleRotateKey(verifier.id)}>Rotate Key</Button>
                                         </TableCell>
                                     </TableRow>

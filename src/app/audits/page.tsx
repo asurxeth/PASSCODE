@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,42 +12,54 @@ import { Button } from '@/components/ui/button';
 import { getVerificationAuditLogsSummary } from '@/ai/flows/verification-audit-logs';
 import { Bot, Search, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useAuth } from '@/firebase/auth-provider';
+import { db, collection, query, where, onSnapshot, doc, getDoc, orderBy } from '@/firebase';
 
 type AuditLog = {
   id: string;
-  event: string;
-  date: string;
-  platform: string;
-  details: string;
+  requestId: string;
+  verifierId: string;
+  platformName?: string;
+  timestamp: { seconds: number };
+  verifiedFields: string[];
 };
-
-const initialAuditLogs: AuditLog[] = [
-  { id: 'L001', event: 'KYC Data Shared', date: '2023-10-26T10:05:00Z', platform: 'Fintech App', details: 'Shared: Full Name, ID Number' },
-  { id: 'L002', event: 'KYC Data Shared', date: '2023-10-25T15:20:00Z', platform: 'E-commerce Site', details: 'Shared: Full Name, Address' },
-  { id: 'L003', event: 'Request Denied', date: '2023-10-25T09:15:00Z', platform: 'Social Media Co', details: '-' },
-  { id: 'L004', event: 'KYC Details Updated', date: '2023-10-23T11:00:00Z', platform: 'User Action', details: 'Address updated' },
-  { id: 'L005', event: 'KYC Data Shared', date: '2023-10-22T20:45:00Z', platform: 'Crypto Exchange', details: 'Shared: Full Name, DOB, ID' },
-];
 
 type AuditQueryForm = {
   query: string;
 };
 
 export default function AuditsPage() {
+  const { user } = useAuth();
   const [summary, setSummary] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { register, handleSubmit, reset } = useForm<AuditQueryForm>();
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
   useEffect(() => {
-    const storedLogs = localStorage.getItem('auditLogs');
-    if (storedLogs) {
-      setAuditLogs(JSON.parse(storedLogs));
-    } else {
-      localStorage.setItem('auditLogs', JSON.stringify(initialAuditLogs));
-      setAuditLogs(initialAuditLogs);
-    }
-  }, []);
+    if (!user) return;
+
+    const logsQuery = query(
+      collection(db, 'verification_logs'),
+      where('userId', '==', user.uid),
+      orderBy('timestamp', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(logsQuery, async (snapshot) => {
+      const fetchedLogs = await Promise.all(
+        snapshot.docs.map(async (docData) => {
+          const log = { id: docData.id, ...docData.data() } as AuditLog;
+          const verifierSnap = await getDoc(doc(db, 'verifiers', log.verifierId));
+          if (verifierSnap.exists()) {
+            log.platformName = verifierSnap.data().name;
+          }
+          return log;
+        })
+      );
+      setAuditLogs(fetchedLogs);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const onQuerySubmit = async (data: AuditQueryForm) => {
     if (!data.query) return;
@@ -63,12 +76,6 @@ export default function AuditsPage() {
       reset();
     }
   };
-
-  const getBadgeVariant = (event: string) => {
-    if (event.includes('Granted') || event.includes('Shared')) return 'success';
-    if (event.includes('Denied') || event.includes('Revoked')) return 'destructive';
-    return 'secondary';
-  }
 
   return (
     <AppLayout>
@@ -132,13 +139,13 @@ export default function AuditsPage() {
                   {auditLogs.map((log) => (
                     <TableRow key={log.id}>
                       <TableCell>
-                        <Badge variant={getBadgeVariant(log.event)}>
-                          {log.event}
+                        <Badge variant={'success'}>
+                          KYC Data Shared
                         </Badge>
                       </TableCell>
-                      <TableCell>{log.platform}</TableCell>
-                      <TableCell>{format(new Date(log.date), "PPp")}</TableCell>
-                      <TableCell className="text-muted-foreground">{log.details}</TableCell>
+                      <TableCell>{log.platformName}</TableCell>
+                      <TableCell>{format(new Date(log.timestamp.seconds * 1000), "PPp")}</TableCell>
+                      <TableCell className="text-muted-foreground">{`Shared: ${log.verifiedFields.join(', ')}`}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

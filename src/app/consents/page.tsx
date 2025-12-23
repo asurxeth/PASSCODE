@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,57 +6,85 @@ import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { FileText, Trash2, CheckCircle } from 'lucide-react';
+import { FileText, Trash2, CheckCircle, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
+import { useAuth } from '@/firebase/auth-provider';
+import { db, collection, query, where, onSnapshot, doc, getDoc, deleteDoc } from '@/firebase';
 
 type ActiveConsent = {
-  id: string;
+  id: string; // This will be the kyc_request ID
   platform: string;
   granted: string;
   fields: string[];
   logo: string;
   logoHint: string;
+  verifierId: string;
 };
 
 export default function ConsentsPage() {
+  const { user } = useAuth();
   const [activeConsents, setActiveConsents] = useState<ActiveConsent[]>([]);
+  const [loading, setLoading] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
 
   useEffect(() => {
-    const storedConsents = localStorage.getItem('activeConsents');
-    if (storedConsents) {
-      setActiveConsents(JSON.parse(storedConsents));
-    }
-  }, []);
+    if (!user) return;
 
-  const logAuditEvent = (event: string, platform: string, details: string) => {
-    const existingLogs = JSON.parse(localStorage.getItem('auditLogs') || '[]');
-    const newLog = {
-      id: `L${(existingLogs.length + 1).toString().padStart(3, '0')}`,
-      event,
-      platform,
-      details,
-      date: new Date().toISOString(),
-    };
-    localStorage.setItem('auditLogs', JSON.stringify([newLog, ...existingLogs]));
-  };
+    const consentsQuery = query(
+      collection(db, 'kyc_requests'),
+      where('userId', '==', user.uid),
+      where('status', '==', 'approved')
+    );
 
-  const handleRevoke = (consentId: string) => {
-    const consent = activeConsents.find(c => c.id === consentId);
-    if (consent) {
-      logAuditEvent('Consent Revoked', consent.platform, `Revoked access to: ${consent.fields.join(', ')}`);
-      
-      const updatedConsents = activeConsents.filter(c => c.id !== consentId);
-      setActiveConsents(updatedConsents);
-      localStorage.setItem('activeConsents', JSON.stringify(updatedConsents));
+    const unsubscribe = onSnapshot(consentsQuery, async (snapshot) => {
+      const fetchedConsents = await Promise.all(
+        snapshot.docs.map(async (docData) => {
+          const request = { id: docData.id, ...docData.data() };
+          const verifierSnap = await getDoc(doc(db, 'verifiers', request.verifierId));
+          let platformName = 'Unknown Platform';
+          let platformLogo = `https://picsum.photos/seed/${request.verifierId}/40/40`;
 
+          if (verifierSnap.exists()) {
+            platformName = verifierSnap.data().name;
+          }
+
+          return {
+            id: request.id,
+            platform: platformName,
+            granted: request.createdAt.toDate().toISOString(),
+            fields: request.requestedFields,
+            logo: platformLogo,
+            logoHint: 'company logo',
+            verifierId: request.verifierId,
+          } as ActiveConsent;
+        })
+      );
+      setActiveConsents(fetchedConsents);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const handleRevoke = async (consentId: string) => {
+    setLoading(prev => ({...prev, [consentId]: true}));
+    try {
+      const consent = activeConsents.find(c => c.id === consentId);
+      await deleteDoc(doc(db, 'kyc_requests', consentId));
       toast({
         title: 'Consent Revoked',
-        description: `Your data is no longer shared with ${consent.platform}.`,
+        description: `Your data is no longer shared with ${consent?.platform}.`,
         variant: 'destructive'
       });
+    } catch (error) {
+       toast({
+        title: 'Error',
+        description: `Could not revoke consent.`,
+        variant: 'destructive'
+      });
+    } finally {
+        setLoading(prev => ({...prev, [consentId]: false}));
     }
   };
 
@@ -94,8 +123,8 @@ export default function ConsentsPage() {
                 <CardFooter className="flex justify-end">
                    <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="destructive">
-                            <Trash2 className="mr-2 h-4 w-4" />
+                        <Button variant="destructive" disabled={loading[consent.id]}>
+                            {loading[consent.id] ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
                             Revoke
                         </Button>
                       </AlertDialogTrigger>
@@ -104,7 +133,7 @@ export default function ConsentsPage() {
                           <AlertDialogTitle>Are you sure you want to revoke consent?</AlertDialogTitle>
                           <AlertDialogDescription>
                             This will stop sharing your data with <span className="font-bold">{consent.platform}</span>. This action cannot be undone, and they may need to request access again in the future.
-                          </AlertDialogDescription>
+                          </ReadAlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>

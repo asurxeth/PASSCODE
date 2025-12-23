@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,121 +6,115 @@ import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { CheckCircle, XCircle, FileText } from 'lucide-react';
+import { CheckCircle, XCircle, FileText, Loader2 } from 'lucide-react';
 import Image from 'next/image';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/firebase/auth-provider';
+import { db, collection, query, where, onSnapshot, doc, getDoc, deleteDoc } from '@/firebase';
 
 type VerificationRequest = {
   id: string;
-  platform: string;
-  platformLogo: string;
-  platformLogoHint: string;
+  verifierId: string;
+  platformName?: string;
+  platformLogo?: string;
+  platformLogoHint?: string;
   requestedFields: string[];
   reason: string;
+  status: string;
 };
 
-const initialRequests: VerificationRequest[] = [
-  { 
-    id: 'REQ001', 
-    platform: 'Fintech X', 
-    platformLogo: PlaceHolderImages.find(p => p.id === 'fintech-x-logo')?.imageUrl || '',
-    platformLogoHint: PlaceHolderImages.find(p => p.id === 'fintech-x-logo')?.imageHint || 'company logo',
-    requestedFields: ['Full Name', 'ID Number'], 
-    reason: 'For account opening' 
-  },
-  { 
-    id: 'REQ002', 
-    platform: 'Marketplace Y', 
-    platformLogo: PlaceHolderImages.find(p => p.id === 'marketplace-y-logo')?.imageUrl || '',
-    platformLogoHint: PlaceHolderImages.find(p => p.id === 'marketplace-y-logo')?.imageHint || 'company logo',
-    requestedFields: ['Full Name', 'Address'], 
-    reason: 'For delivery verification' 
-  },
-  { 
-    id: 'REQ003', 
-    platform: 'Rental Z', 
-    platformLogo: PlaceHolderImages.find(p => p.id === 'rental-z-logo')?.imageUrl || '',
-    platformLogoHint: PlaceHolderImages.find(p => p.id === 'rental-z-logo')?.imageHint || 'company logo',
-    requestedFields: ['Full Name', 'DOB', 'ID Number'], 
-    reason: 'To verify age and identity for rental agreement' 
-  },
-];
-
 export default function RequestsPage() {
+  const { user, auth } = useAuth();
   const [requests, setRequests] = useState<VerificationRequest[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<VerificationRequest | null>(null);
   const [showTokenDialog, setShowTokenDialog] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
+  const [loading, setLoading] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
 
   useEffect(() => {
-    // In a real app, you'd fetch these from a server.
-    const storedRequests = localStorage.getItem('verificationRequests');
-    if (storedRequests) {
-      setRequests(JSON.parse(storedRequests));
-    } else {
-      setRequests(initialRequests);
-    }
-  }, []);
+    if (!user) return;
 
-  const updateLocalStorage = (updatedRequests: VerificationRequest[]) => {
-    localStorage.setItem('verificationRequests', JSON.stringify(updatedRequests));
-  };
-  
-  const logAuditEvent = (event: string, platform: string, details: string) => {
-    const existingLogs = JSON.parse(localStorage.getItem('auditLogs') || '[]');
-    const newLog = {
-      id: `L${(existingLogs.length + 1).toString().padStart(3, '0')}`,
-      event,
-      platform,
-      details,
-      date: new Date().toISOString(),
-    };
-    localStorage.setItem('auditLogs', JSON.stringify([newLog, ...existingLogs]));
-  };
+    const requestsQuery = query(
+      collection(db, 'kyc_requests'),
+      where('userId', '==', user.uid),
+      where('status', '==', 'pending')
+    );
 
-  const handleApprove = (request: VerificationRequest) => {
-    setSelectedRequest(request);
-    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-    setVerificationCode(code);
-    
-    const newActiveConsents = JSON.parse(localStorage.getItem('activeConsents') || '[]');
-    const newConsent = {
-      id: `C${(newActiveConsents.length + 1).toString().padStart(3, '0')}`,
-      platform: request.platform,
-      granted: new Date().toISOString(),
-      fields: request.requestedFields,
-      logo: request.platformLogo,
-      logoHint: request.platformLogoHint,
-    };
-    localStorage.setItem('activeConsents', JSON.stringify([newConsent, ...newActiveConsents]));
-    
-    logAuditEvent('Consent Granted', request.platform, `Shared: ${request.requestedFields.join(', ')}`);
-    
-    const updatedRequests = requests.filter(r => r.id !== request.id);
-    setRequests(updatedRequests);
-    updateLocalStorage(updatedRequests);
-    setShowTokenDialog(true);
-    toast({
-        title: 'Request Approved',
-        description: `Data sharing consent granted to ${request.platform}.`,
-        variant: 'success',
+    const unsubscribe = onSnapshot(requestsQuery, async (snapshot) => {
+      const fetchedRequests = await Promise.all(
+        snapshot.docs.map(async (docData) => {
+          const request = { id: docData.id, ...docData.data() } as VerificationRequest;
+          const verifierSnap = await getDoc(doc(db, 'verifiers', request.verifierId));
+          if (verifierSnap.exists()) {
+            request.platformName = verifierSnap.data().name;
+            // You can add logo URLs to your verifier docs
+            request.platformLogo = `https://picsum.photos/seed/${verifierSnap.id}/40/40`;
+            request.platformLogoHint = 'company logo';
+          }
+          return request;
+        })
+      );
+      setRequests(fetchedRequests);
     });
-  };
 
-  const handleDeny = (requestId: string) => {
-    const request = requests.find(r => r.id === requestId);
-    if(request) {
-        logAuditEvent('Consent Denied', request.platform, `Denied request for: ${request.requestedFields.join(', ')}`);
-        const updatedRequests = requests.filter(r => r.id !== requestId);
-        setRequests(updatedRequests);
-        updateLocalStorage(updatedRequests);
+    return () => unsubscribe();
+  }, [user]);
+
+  const handleApprove = async (request: VerificationRequest) => {
+    if (!user) return;
+    setLoading(prev => ({ ...prev, [request.id]: true }));
+    setSelectedRequest(request);
+
+    try {
+        const idToken = await user.getIdToken();
+        const response = await fetch('/api/kyc/approve-request', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`
+            },
+            body: JSON.stringify({ requestId: request.id }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to approve request.');
+        }
+
+        setVerificationCode(data.token);
+        setShowTokenDialog(true);
         toast({
-            title: 'Request Denied',
-            description: `Data sharing consent denied for ${request.platform}.`,
+            title: 'Request Approved',
+            description: `Data sharing consent granted to ${request.platformName}.`,
+            variant: 'success',
+        });
+    } catch (error: any) {
+        toast({
+            title: 'Approval Failed',
+            description: error.message,
             variant: 'destructive',
         });
+    } finally {
+        setLoading(prev => ({ ...prev, [request.id]: false }));
+    }
+  };
+
+  const handleDeny = async (requestId: string) => {
+    setLoading(prev => ({ ...prev, [requestId]: true }));
+    try {
+        const request = requests.find(r => r.id === requestId);
+        await deleteDoc(doc(db, 'kyc_requests', requestId));
+        toast({
+            title: 'Request Denied',
+            description: `Data sharing consent denied for ${request?.platformName}.`,
+            variant: 'destructive',
+        });
+    } catch (error) {
+        toast({ title: 'Error', description: 'Could not deny request.', variant: 'destructive' });
+    } finally {
+        setLoading(prev => ({ ...prev, [requestId]: false }));
     }
   };
 
@@ -135,9 +130,9 @@ export default function RequestsPage() {
             {requests.map((request) => (
               <Card key={request.id} className="flex flex-col">
                 <CardHeader className="flex flex-row items-center gap-4">
-                  <Image src={request.platformLogo} alt={`${request.platform} logo`} width={40} height={40} className="h-10 w-10 rounded-full" data-ai-hint={request.platformLogoHint} />
+                   {request.platformLogo && <Image src={request.platformLogo} alt={`${request.platformName} logo`} width={40} height={40} className="h-10 w-10 rounded-full" data-ai-hint={request.platformLogoHint} />}
                   <div>
-                    <CardTitle>{request.platform}</CardTitle>
+                    <CardTitle>{request.platformName || 'Unknown Platform'}</CardTitle>
                     <CardDescription>is requesting your information</CardDescription>
                   </div>
                 </CardHeader>
@@ -151,16 +146,19 @@ export default function RequestsPage() {
                       </li>
                     ))}
                   </ul>
-                  <h4 className="font-semibold mt-4 mb-2">Reason:</h4>
-                  <p className="text-sm text-muted-foreground">{request.reason}</p>
+                  {request.reason && <>
+                    <h4 className="font-semibold mt-4 mb-2">Reason:</h4>
+                    <p className="text-sm text-muted-foreground">{request.reason}</p>
+                  </>
+                  }
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => handleDeny(request.id)}>
-                    <XCircle className="mr-2 h-4 w-4" />
+                  <Button variant="outline" onClick={() => handleDeny(request.id)} disabled={loading[request.id]}>
+                    {loading[request.id] ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
                     Deny
                   </Button>
-                  <Button onClick={() => handleApprove(request)}>
-                    <CheckCircle className="mr-2 h-4 w-4" />
+                  <Button onClick={() => handleApprove(request)} disabled={loading[request.id]}>
+                    {loading[request.id] ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
                     Approve
                   </Button>
                 </CardFooter>
@@ -181,7 +179,7 @@ export default function RequestsPage() {
           <DialogHeader>
             <DialogTitle>Verification Code Generated</DialogTitle>
             <DialogDescription>
-              Share this one-time code with <span className="font-bold">{selectedRequest?.platform}</span>. It will expire in 5 minutes.
+              Share this one-time code with <span className="font-bold">{selectedRequest?.platformName}</span>. It will expire in 5 minutes.
             </DialogDescription>
           </DialogHeader>
           <div className="my-4 flex items-center justify-center bg-muted p-8 rounded-lg">

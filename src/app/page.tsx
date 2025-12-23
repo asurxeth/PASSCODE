@@ -1,25 +1,99 @@
+
+'use client';
+
+import { useEffect, useState } from 'react';
 import { AppLayout } from '@/components/app-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Award, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { useAuth } from '@/firebase/auth-provider';
+import { db, onSnapshot, collection, query, where, orderBy, doc, getDoc } from '@/firebase';
+import { format } from 'date-fns';
 
-const recentVerifications = [
-  { id: 'V001', platform: 'Fintech App', date: '2023-10-26', status: 'Approved' },
-  { id: 'V002', platform: 'E-commerce Site', date: '2023-10-25', status: 'Approved' },
-  { id: 'V003', platform: 'Rental Service', date: '2023-10-24', status: 'Pending' },
-  { id: 'V004', platform: 'Social Network', date: '2023-10-23', status: 'Rejected' },
-  { id: 'V005', platform: 'Crypto Exchange', date: '2023-10-22', status: 'Approved' },
-];
+type Verification = {
+  id: string;
+  verifierId: string;
+  platformName?: string;
+  createdAt: { seconds: number };
+  status: string;
+};
+
+type Reward = {
+  points: number;
+  tier: string;
+  totalVerifications: number;
+};
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const [recentVerifications, setRecentVerifications] = useState<Verification[]>([]);
+  const [rewardData, setRewardData] = useState<Reward | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const verificationsQuery = query(
+      collection(db, 'kyc_requests'),
+      where('userId', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribeVerifications = onSnapshot(verificationsQuery, async (snapshot) => {
+      const verifications = await Promise.all(
+        snapshot.docs.map(async (docData) => {
+          const data = docData.data();
+          let platformName = 'Unknown';
+          if (data.verifierId) {
+            const verifierSnap = await getDoc(doc(db, 'verifiers', data.verifierId));
+            if (verifierSnap.exists()) {
+              platformName = verifierSnap.data().name;
+            }
+          }
+          return {
+            id: docData.id,
+            platformName,
+            ...data,
+          } as Verification;
+        })
+      );
+      setRecentVerifications(verifications);
+    });
+
+    const rewardRef = doc(db, 'rewards', user.uid);
+    const unsubscribeRewards = onSnapshot(rewardRef, (doc) => {
+      if (doc.exists()) {
+        setRewardData(doc.data() as Reward);
+      }
+    });
+
+    return () => {
+      unsubscribeVerifications();
+      unsubscribeRewards();
+    };
+  }, [user]);
+
+  const getTierProgress = () => {
+    if (!rewardData) return 0;
+    if (rewardData.tier === 'gold') return 100;
+    if (rewardData.tier === 'silver') return ((rewardData.totalVerifications - 10) / 10) * 100;
+    return (rewardData.totalVerifications / 10) * 100;
+  };
+  
+  const pointsToNextTier = () => {
+    if(!rewardData) return 0;
+    if(rewardData.tier === 'bronze') return 10 - rewardData.totalVerifications;
+    if(rewardData.tier === 'silver') return 20 - rewardData.totalVerifications;
+    return 0;
+  }
+
   return (
     <AppLayout>
       <div className="grid gap-6">
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back, Jane! Here's your KYC summary.</p>
+          <p className="text-muted-foreground">Welcome back! Here's your KYC summary.</p>
         </div>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <Card>
@@ -28,18 +102,19 @@ export default function DashboardPage() {
               <Award className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">1,250</div>
-              <p className="text-xs text-muted-foreground">+50 since last week</p>
+              <div className="text-2xl font-bold">{rewardData?.points ?? 0}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-medium">Verification Tier</CardTitle>
-              <CardDescription>Gold Tier</CardDescription>
+              <CardDescription className="capitalize">{rewardData?.tier ?? 'Bronze'} Tier</CardDescription>
             </CardHeader>
             <CardContent>
-              <Progress value={75} className="h-2" />
-              <p className="text-xs text-muted-foreground mt-2">750 points to Platinum Tier</p>
+              <Progress value={getTierProgress()} className="h-2" />
+              <p className="text-xs text-muted-foreground mt-2">
+                {rewardData?.tier === 'gold' ? "You've reached the highest tier!" : `${pointsToNextTier() * 10} points to next tier`}
+              </p>
             </CardContent>
           </Card>
           <Card>
@@ -48,8 +123,7 @@ export default function DashboardPage() {
               <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">25</div>
-              <p className="text-xs text-muted-foreground">+3 this month</p>
+              <div className="text-2xl font-bold">{rewardData?.totalVerifications ?? 0}</div>
             </CardContent>
           </Card>
         </div>
@@ -71,20 +145,20 @@ export default function DashboardPage() {
               <TableBody>
                 {recentVerifications.map((verification) => (
                   <TableRow key={verification.id}>
-                    <TableCell className="font-medium">{verification.id}</TableCell>
-                    <TableCell>{verification.platform}</TableCell>
-                    <TableCell>{verification.date}</TableCell>
+                    <TableCell className="font-medium">{verification.id.substring(0,6)}...</TableCell>
+                    <TableCell>{verification.platformName}</TableCell>
+                    <TableCell>{format(new Date(verification.createdAt.seconds * 1000), 'PP')}</TableCell>
                     <TableCell>
                        <Badge
                         variant={
-                          verification.status === 'Approved' ? 'success' :
-                          verification.status === 'Pending' ? 'warning' :
+                          verification.status === 'approved' ? 'success' :
+                          verification.status === 'pending' ? 'warning' :
                           'destructive'
                         }
                         className="capitalize"
                       >
-                        {verification.status === 'Approved' ? <CheckCircle className="mr-1 h-3 w-3" /> :
-                        verification.status === 'Pending' ? <Clock className="mr-1 h-3 w-3" /> :
+                        {verification.status === 'approved' ? <CheckCircle className="mr-1 h-3 w-3" /> :
+                        verification.status === 'pending' ? <Clock className="mr-1 h-3 w-3" /> :
                         <XCircle className="mr-1 h-3 w-3" />}
                         {verification.status}
                       </Badge>

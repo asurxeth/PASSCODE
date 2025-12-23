@@ -26,14 +26,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUser(user);
+        setLoading(false);
       } else {
-        try {
-          await signInAnonymously(auth);
-        } catch (error) {
-          console.error("Anonymous sign-in failed:", error);
+        // Only attempt anonymous sign-in if the app is configured
+        // and we haven't already failed.
+        if (isConfigValid) {
+            try {
+              await signInAnonymously(auth);
+            } catch (error: any) {
+              // This can happen if anonymous sign-in isn't enabled in the Firebase console
+              if (error.code !== 'auth/operation-not-allowed') {
+                console.error("Anonymous sign-in failed:", error);
+              }
+              setLoading(false);
+            }
+        } else {
+             setLoading(false);
         }
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();

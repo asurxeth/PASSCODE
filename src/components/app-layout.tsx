@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   History,
   Settings,
+  Handshake,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Logo } from '@/components/icons';
@@ -31,6 +32,7 @@ const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard, tooltip: 'Dashboard' },
   { href: '/kyc', label: 'KYC Details', icon: FileText, tooltip: 'KYC Details' },
   { href: '/requests', label: 'Verification Requests', icon: ShieldCheck, tooltip: 'Requests' },
+  { href: '/consents', label: 'Active Consents', icon: Handshake, tooltip: 'Consents' },
   { href: '/audits', label: 'Audit Logs', icon: History, tooltip: 'Audit Logs' },
 ];
 

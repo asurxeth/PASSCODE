@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { CheckCircle, XCircle, FileText } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { useToast } from '@/hooks/use-toast';
 
 type VerificationRequest = {
   id: string;
@@ -50,23 +51,76 @@ export default function RequestsPage() {
   const [selectedRequest, setSelectedRequest] = useState<VerificationRequest | null>(null);
   const [showTokenDialog, setShowTokenDialog] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
+  const { toast } = useToast();
 
   useEffect(() => {
-    setRequests(initialRequests);
+    // In a real app, you'd fetch these from a server.
+    const storedRequests = localStorage.getItem('verificationRequests');
+    if (storedRequests) {
+      setRequests(JSON.parse(storedRequests));
+    } else {
+      setRequests(initialRequests);
+    }
   }, []);
+
+  const updateLocalStorage = (updatedRequests: VerificationRequest[]) => {
+    localStorage.setItem('verificationRequests', JSON.stringify(updatedRequests));
+  };
+  
+  const logAuditEvent = (event: string, platform: string, details: string) => {
+    const existingLogs = JSON.parse(localStorage.getItem('auditLogs') || '[]');
+    const newLog = {
+      id: `L${(existingLogs.length + 1).toString().padStart(3, '0')}`,
+      event,
+      platform,
+      details,
+      date: new Date().toISOString(),
+    };
+    localStorage.setItem('auditLogs', JSON.stringify([newLog, ...existingLogs]));
+  };
 
   const handleApprove = (request: VerificationRequest) => {
     setSelectedRequest(request);
-    // In a real app, this would call a backend to generate a secure, one-time code.
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
     setVerificationCode(code);
+    
+    const newActiveConsents = JSON.parse(localStorage.getItem('activeConsents') || '[]');
+    const newConsent = {
+      id: `C${(newActiveConsents.length + 1).toString().padStart(3, '0')}`,
+      platform: request.platform,
+      granted: new Date().toISOString(),
+      fields: request.requestedFields,
+      logo: request.platformLogo,
+      logoHint: request.platformLogoHint,
+    };
+    localStorage.setItem('activeConsents', JSON.stringify([newConsent, ...newActiveConsents]));
+    
+    logAuditEvent('Consent Granted', request.platform, `Shared: ${request.requestedFields.join(', ')}`);
+    
+    const updatedRequests = requests.filter(r => r.id !== request.id);
+    setRequests(updatedRequests);
+    updateLocalStorage(updatedRequests);
     setShowTokenDialog(true);
-    setRequests(requests.filter(r => r.id !== request.id));
+    toast({
+        title: 'Request Approved',
+        description: `Data sharing consent granted to ${request.platform}.`,
+        variant: 'success',
+    });
   };
 
   const handleDeny = (requestId: string) => {
-    // In a real app, this would notify the backend.
-    setRequests(requests.filter(r => r.id !== requestId));
+    const request = requests.find(r => r.id === requestId);
+    if(request) {
+        logAuditEvent('Consent Denied', request.platform, `Denied request for: ${request.requestedFields.join(', ')}`);
+        const updatedRequests = requests.filter(r => r.id !== requestId);
+        setRequests(updatedRequests);
+        updateLocalStorage(updatedRequests);
+        toast({
+            title: 'Request Denied',
+            description: `Data sharing consent denied for ${request.platform}.`,
+            variant: 'destructive',
+        });
+    }
   };
 
   return (

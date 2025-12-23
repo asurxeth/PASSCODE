@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { AppLayout } from '@/components/app-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -10,13 +10,22 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { getVerificationAuditLogsSummary } from '@/ai/flows/verification-audit-logs';
 import { Bot, Search, Loader2 } from 'lucide-react';
+import { format } from 'date-fns';
 
-const auditLogs = [
-  { id: 'L001', event: 'KYC Data Shared', date: '2023-10-26 10:05 AM', platform: 'Fintech App', details: 'Shared: Full Name, ID Number' },
-  { id: 'L002', event: 'KYC Data Shared', date: '2023-10-25 03:20 PM', platform: 'E-commerce Site', details: 'Shared: Full Name, Address' },
-  { id: 'L003', event: 'Request Denied', date: '2023-10-25 09:15 AM', platform: 'Social Media Co', details: '-' },
-  { id: 'L004', event: 'KYC Details Updated', date: '2023-10-23 11:00 AM', platform: 'User Action', details: 'Address updated' },
-  { id: 'L005', event: 'KYC Data Shared', date: '2023-10-22 08:45 PM', platform: 'Crypto Exchange', details: 'Shared: Full Name, DOB, ID' },
+type AuditLog = {
+  id: string;
+  event: string;
+  date: string;
+  platform: string;
+  details: string;
+};
+
+const initialAuditLogs: AuditLog[] = [
+  { id: 'L001', event: 'KYC Data Shared', date: '2023-10-26T10:05:00Z', platform: 'Fintech App', details: 'Shared: Full Name, ID Number' },
+  { id: 'L002', event: 'KYC Data Shared', date: '2023-10-25T15:20:00Z', platform: 'E-commerce Site', details: 'Shared: Full Name, Address' },
+  { id: 'L003', event: 'Request Denied', date: '2023-10-25T09:15:00Z', platform: 'Social Media Co', details: '-' },
+  { id: 'L004', event: 'KYC Details Updated', date: '2023-10-23T11:00:00Z', platform: 'User Action', details: 'Address updated' },
+  { id: 'L005', event: 'KYC Data Shared', date: '2023-10-22T20:45:00Z', platform: 'Crypto Exchange', details: 'Shared: Full Name, DOB, ID' },
 ];
 
 type AuditQueryForm = {
@@ -27,6 +36,17 @@ export default function AuditsPage() {
   const [summary, setSummary] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { register, handleSubmit, reset } = useForm<AuditQueryForm>();
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+
+  useEffect(() => {
+    const storedLogs = localStorage.getItem('auditLogs');
+    if (storedLogs) {
+      setAuditLogs(JSON.parse(storedLogs));
+    } else {
+      localStorage.setItem('auditLogs', JSON.stringify(initialAuditLogs));
+      setAuditLogs(initialAuditLogs);
+    }
+  }, []);
 
   const onQuerySubmit = async (data: AuditQueryForm) => {
     if (!data.query) return;
@@ -43,6 +63,12 @@ export default function AuditsPage() {
       reset();
     }
   };
+
+  const getBadgeVariant = (event: string) => {
+    if (event.includes('Granted') || event.includes('Shared')) return 'success';
+    if (event.includes('Denied') || event.includes('Revoked')) return 'destructive';
+    return 'secondary';
+  }
 
   return (
     <AppLayout>
@@ -106,12 +132,12 @@ export default function AuditsPage() {
                   {auditLogs.map((log) => (
                     <TableRow key={log.id}>
                       <TableCell>
-                        <Badge variant={log.event.includes('Shared') ? 'success' : log.event.includes('Denied') ? 'destructive' : 'secondary'}>
+                        <Badge variant={getBadgeVariant(log.event)}>
                           {log.event}
                         </Badge>
                       </TableCell>
                       <TableCell>{log.platform}</TableCell>
-                      <TableCell>{log.date}</TableCell>
+                      <TableCell>{format(new Date(log.date), "PPp")}</TableCell>
                       <TableCell className="text-muted-foreground">{log.details}</TableCell>
                     </TableRow>
                   ))}

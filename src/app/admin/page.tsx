@@ -11,7 +11,7 @@ import { AppLayout } from "@/components/app-layout";
 import { useAuth } from "@/firebase/auth-provider";
 import { format } from "date-fns";
 import { db } from "@/firebase/config";
-import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 
 function StatCard({ title, value, icon }: { title: string, value: string | number, icon: ReactNode }) {
@@ -70,13 +70,48 @@ function FraudAlerts() {
     return () => unsubscribe();
   }, []);
 
-  const suspendVerifier = (verifierId: string) => {
-    toast({ title: 'Action Required', description: `Suspend action for ${verifierId} needs implementation.` });
-  }
+  const suspendVerifier = async (verifierId: string) => {
+    if (!db) return;
+    const verifierRef = doc(db, "verifiers", verifierId);
+    try {
+      await updateDoc(verifierRef, { status: "suspended" });
+      toast({
+        title: "Verifier Suspended",
+        description: `Verifier ${verifierId} has been suspended.`,
+        variant: "destructive",
+      });
+    } catch (e) {
+      console.error("Failed to suspend verifier:", e);
+      toast({
+        title: "Error",
+        description: "Could not suspend verifier.",
+        variant: "destructive",
+      });
+    }
+  };
 
-  const resolveAlert = (alertId: string) => {
-     toast({ title: 'Action Required', description: `Resolve action for ${alertId} needs implementation.` });
-  }
+  const resolveAlert = async (alertId: string) => {
+    if (!db) return;
+    const alertRef = doc(db, "security_alerts", alertId);
+    try {
+      await updateDoc(alertRef, {
+        status: "resolved",
+        resolvedAt: serverTimestamp(),
+      });
+      toast({
+        title: "Alert Resolved",
+        description: `Alert ${alertId} has been marked as resolved.`,
+        variant: "success",
+      });
+    } catch (e) {
+      console.error("Failed to resolve alert:", e);
+      toast({
+        title: "Error",
+        description: "Could not resolve alert.",
+        variant: "destructive",
+      });
+    }
+  };
   
   if (alerts.length === 0) {
     return null;
@@ -313,3 +348,5 @@ export default function AdminDashboard() {
     </AppLayout>
   );
 }
+
+    

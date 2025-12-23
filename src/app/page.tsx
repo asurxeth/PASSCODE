@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Award, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Award, CheckCircle, Clock, XCircle, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/firebase/auth-provider';
-import { db, onSnapshot, collection, query, where, orderBy, doc, getDoc } from '@/firebase';
+import { db, onSnapshot, collection, query, where, orderBy, doc, getDoc, isConfigValid } from '@/firebase';
 import { format } from 'date-fns';
 
 type Verification = {
@@ -32,7 +33,7 @@ export default function DashboardPage() {
   const [rewardData, setRewardData] = useState<Reward | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
 
     const verificationsQuery = query(
       collection(db, 'kyc_requests'),
@@ -86,6 +87,20 @@ export default function DashboardPage() {
     if(rewardData.tier === 'bronze') return 10 - rewardData.totalVerifications;
     if(rewardData.tier === 'silver') return 20 - rewardData.totalVerifications;
     return 0;
+  }
+
+  if (!isConfigValid) {
+    return (
+      <AppLayout>
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Firebase Not Configured</AlertTitle>
+          <AlertDescription>
+            Please add your Firebase project credentials to the `.env` file to see this page.
+          </AlertDescription>
+        </Alert>
+      </AppLayout>
+    );
   }
 
   return (

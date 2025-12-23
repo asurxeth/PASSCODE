@@ -2,12 +2,12 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, type User, auth } from '@/firebase';
+import { onAuthStateChanged, type User, auth, isConfigValid } from '@/firebase';
 import { signInAnonymously, type Auth } from 'firebase/auth';
 
 type AuthContextType = {
   user: User | null;
-  auth: Auth;
+  auth: Auth | null;
   loading: boolean;
 };
 
@@ -18,11 +18,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isConfigValid || !auth) {
+      setLoading(false);
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUser(user);
       } else {
-        await signInAnonymously(auth);
+        try {
+          await signInAnonymously(auth);
+        } catch (error) {
+          console.error("Anonymous sign-in failed:", error);
+        }
       }
       setLoading(false);
     });

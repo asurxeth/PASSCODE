@@ -6,12 +6,13 @@ import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { FileText, Trash2, CheckCircle, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { FileText, Trash2, CheckCircle, Loader2, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/firebase/auth-provider';
-import { db, collection, query, where, onSnapshot, doc, getDoc, deleteDoc } from '@/firebase';
+import { db, collection, query, where, onSnapshot, doc, getDoc, deleteDoc, isConfigValid } from '@/firebase';
 
 type ActiveConsent = {
   id: string; // This will be the kyc_request ID
@@ -30,7 +31,7 @@ export default function ConsentsPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
 
     const consentsQuery = query(
       collection(db, 'kyc_requests'),
@@ -68,6 +69,7 @@ export default function ConsentsPage() {
   }, [user]);
 
   const handleRevoke = async (consentId: string) => {
+    if (!db) return;
     setLoading(prev => ({...prev, [consentId]: true}));
     try {
       const consent = activeConsents.find(c => c.id === consentId);
@@ -87,6 +89,20 @@ export default function ConsentsPage() {
         setLoading(prev => ({...prev, [consentId]: false}));
     }
   };
+
+  if (!isConfigValid) {
+    return (
+      <AppLayout>
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Firebase Not Configured</AlertTitle>
+          <AlertDescription>
+            Please add your Firebase project credentials to the `.env` file to see this page.
+          </AlertDescription>
+        </Alert>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -133,7 +149,7 @@ export default function ConsentsPage() {
                           <AlertDialogTitle>Are you sure you want to revoke consent?</AlertDialogTitle>
                           <AlertDialogDescription>
                             This will stop sharing your data with <span className="font-bold">{consent.platform}</span>. This action cannot be undone, and they may need to request access again in the future.
-                          </ReadAlertDialogDescription>
+                          </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>

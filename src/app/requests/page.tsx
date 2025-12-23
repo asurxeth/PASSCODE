@@ -6,11 +6,12 @@ import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { CheckCircle, XCircle, FileText, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { CheckCircle, XCircle, FileText, Loader2, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/firebase/auth-provider';
-import { db, collection, query, where, onSnapshot, doc, getDoc, deleteDoc } from '@/firebase';
+import { db, collection, query, where, onSnapshot, doc, getDoc, deleteDoc, isConfigValid } from '@/firebase';
 
 type VerificationRequest = {
   id: string;
@@ -24,7 +25,7 @@ type VerificationRequest = {
 };
 
 export default function RequestsPage() {
-  const { user, auth } = useAuth();
+  const { user } = useAuth();
   const [requests, setRequests] = useState<VerificationRequest[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<VerificationRequest | null>(null);
   const [showTokenDialog, setShowTokenDialog] = useState(false);
@@ -33,7 +34,7 @@ export default function RequestsPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
 
     const requestsQuery = query(
       collection(db, 'kyc_requests'),
@@ -102,6 +103,7 @@ export default function RequestsPage() {
   };
 
   const handleDeny = async (requestId: string) => {
+    if (!db) return;
     setLoading(prev => ({ ...prev, [requestId]: true }));
     try {
         const request = requests.find(r => r.id === requestId);
@@ -117,6 +119,20 @@ export default function RequestsPage() {
         setLoading(prev => ({ ...prev, [requestId]: false }));
     }
   };
+
+  if (!isConfigValid) {
+    return (
+      <AppLayout>
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Firebase Not Configured</AlertTitle>
+          <AlertDescription>
+            Please add your Firebase project credentials to the `.env` file to see this page.
+          </AlertDescription>
+        </Alert>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

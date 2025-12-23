@@ -9,11 +9,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { getVerificationAuditLogsSummary } from '@/ai/flows/verification-audit-logs';
-import { Bot, Search, Loader2 } from 'lucide-react';
+import { Bot, Search, Loader2, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/firebase/auth-provider';
-import { db, collection, query, where, onSnapshot, doc, getDoc, orderBy } from '@/firebase';
+import { db, collection, query, where, onSnapshot, doc, getDoc, orderBy, isConfigValid } from '@/firebase';
 
 type AuditLog = {
   id: string;
@@ -36,7 +37,7 @@ export default function AuditsPage() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
 
     const logsQuery = query(
       collection(db, 'verification_logs'),
@@ -76,6 +77,20 @@ export default function AuditsPage() {
       reset();
     }
   };
+
+  if (!isConfigValid) {
+    return (
+      <AppLayout>
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Firebase Not Configured</AlertTitle>
+          <AlertDescription>
+            Please add your Firebase project credentials to the `.env` file to see this page.
+          </AlertDescription>
+        </Alert>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

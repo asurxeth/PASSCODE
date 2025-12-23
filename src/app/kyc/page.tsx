@@ -8,9 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { File, Upload, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { File, Upload, Loader2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/firebase/auth-provider';
-import { db, storage, onSnapshot, doc, setDoc, collection, serverTimestamp, uploadBytes, ref, getDownloadURL } from '@/firebase';
+import { db, storage, onSnapshot, doc, setDoc, collection, serverTimestamp, uploadBytes, ref, getDownloadURL, isConfigValid } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 
 type UserProfile = {
@@ -38,7 +39,7 @@ export default function KycPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
 
     const userProfileRef = doc(db, 'users', user.uid);
     const unsubscribeProfile = onSnapshot(userProfileRef, (doc) => {
@@ -84,7 +85,7 @@ export default function KycPage() {
   };
 
   const handleSave = async () => {
-    if (!user || !userProfile) return;
+    if (!user || !userProfile || !db) return;
     const userProfileRef = doc(db, 'users', user.uid);
     await setDoc(userProfileRef, { ...userProfile, updatedAt: serverTimestamp() }, { merge: true });
     setIsEditing(false);
@@ -97,7 +98,7 @@ export default function KycPage() {
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !user) return;
+    if (!file || !user || !storage || !db) return;
 
     setIsUploading(true);
     try {
@@ -125,6 +126,19 @@ export default function KycPage() {
     }
   };
 
+  if (!isConfigValid) {
+    return (
+      <AppLayout>
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Firebase Not Configured</AlertTitle>
+          <AlertDescription>
+            Please add your Firebase project credentials to the `.env` file to see this page.
+          </AlertDescription>
+        </Alert>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

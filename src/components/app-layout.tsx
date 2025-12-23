@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ReactNode } from 'react';
@@ -27,6 +28,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Logo } from '@/components/icons';
 import { Button } from './ui/button';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { useAuth } from '@/firebase/auth-provider';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard, tooltip: 'Dashboard' },
@@ -38,6 +40,7 @@ const navItems = [
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const { user } = useAuth();
   const userAvatar = PlaceHolderImages.find(p => p.id === 'user-avatar');
 
   return (
@@ -70,12 +73,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <SidebarFooter>
            <SidebarMenu>
               <SidebarMenuItem>
-                  <SidebarMenuButton tooltip={{children: 'Jane Doe'}}>
+                  <SidebarMenuButton tooltip={{children: user?.displayName || 'User'}}>
                       <Avatar className="size-7">
                           {userAvatar && <AvatarImage src={userAvatar.imageUrl} alt={userAvatar.description} data-ai-hint={userAvatar.imageHint} />}
-                          <AvatarFallback>JD</AvatarFallback>
+                          <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
                       </Avatar>
-                      <span>Jane Doe</span>
+                      <span>{user?.displayName || 'Anonymous User'}</span>
                   </SidebarMenuButton>
               </SidebarMenuItem>
            </SidebarMenu>

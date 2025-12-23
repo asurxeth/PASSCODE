@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/firebase/auth-provider';
 import { db, collection, query, where, onSnapshot, doc, getDoc, deleteDoc, isConfigValid } from '@/firebase';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 type ActiveConsent = {
   id: string; // This will be the kyc_request ID
@@ -45,10 +46,18 @@ export default function ConsentsPage() {
           const request = { id: docData.id, ...docData.data() };
           const verifierSnap = await getDoc(doc(db, 'verifiers', request.verifierId));
           let platformName = 'Unknown Platform';
-          let platformLogo = `https://picsum.photos/seed/${request.verifierId}/40/40`;
+          const placeholderLogo = PlaceHolderImages.find(p => p.id.includes('company'))
+          let platformLogo = placeholderLogo?.imageUrl || `https://picsum.photos/seed/${request.verifierId}/40/40`;
+          let logoHint = placeholderLogo?.imageHint || 'company logo';
 
           if (verifierSnap.exists()) {
-            platformName = verifierSnap.data().name;
+            const verifierData = verifierSnap.data();
+            platformName = verifierData.name;
+            const specificLogo = PlaceHolderImages.find(p => p.id.includes(platformName.toLowerCase().split(' ')[0]));
+            if (specificLogo) {
+                platformLogo = specificLogo.imageUrl;
+                logoHint = specificLogo.imageHint;
+            }
           }
 
           return {
@@ -57,7 +66,7 @@ export default function ConsentsPage() {
             granted: request.createdAt.toDate().toISOString(),
             fields: request.requestedFields,
             logo: platformLogo,
-            logoHint: 'company logo',
+            logoHint: logoHint,
             verifierId: request.verifierId,
           } as ActiveConsent;
         })

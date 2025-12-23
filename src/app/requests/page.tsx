@@ -12,6 +12,7 @@ import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/firebase/auth-provider';
 import { db, collection, query, where, onSnapshot, doc, getDoc, deleteDoc, isConfigValid } from '@/firebase';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 type VerificationRequest = {
   id: string;
@@ -48,10 +49,19 @@ export default function RequestsPage() {
           const request = { id: docData.id, ...docData.data() } as VerificationRequest;
           const verifierSnap = await getDoc(doc(db, 'verifiers', request.verifierId));
           if (verifierSnap.exists()) {
-            request.platformName = verifierSnap.data().name;
-            // You can add logo URLs to your verifier docs
-            request.platformLogo = `https://picsum.photos/seed/${verifierSnap.id}/40/40`;
-            request.platformLogoHint = 'company logo';
+            const verifierData = verifierSnap.data();
+            request.platformName = verifierData.name;
+            const placeholderLogo = PlaceHolderImages.find(p => p.id.includes('company'))
+            let platformLogo = placeholderLogo?.imageUrl || `https://picsum.photos/seed/${verifierSnap.id}/40/40`;
+            let logoHint = placeholderLogo?.imageHint || 'company logo';
+
+            const specificLogo = PlaceHolderImages.find(p => p.id.includes(verifierData.name.toLowerCase().split(' ')[0]));
+            if (specificLogo) {
+                platformLogo = specificLogo.imageUrl;
+                logoHint = specificLogo.imageHint;
+            }
+            request.platformLogo = platformLogo;
+            request.platformLogoHint = logoHint;
           }
           return request;
         })

@@ -78,12 +78,12 @@ export default function DashboardPage() {
   const getTierProgress = () => {
     if (!rewardData) return 0;
     if (rewardData.tier === 'gold') return 100;
-    if (rewardData.tier === 'silver') return ((rewardData.totalVerifications - 10) / 10) * 100;
+    if (rewardData.tier === 'silver') return ((rewardData.totalVerifications) / 20) * 100;
     return (rewardData.totalVerifications / 10) * 100;
   };
   
-  const pointsToNextTier = () => {
-    if(!rewardData) return 0;
+  const verificationsToNextTier = () => {
+    if(!rewardData) return 10;
     if(rewardData.tier === 'bronze') return 10 - rewardData.totalVerifications;
     if(rewardData.tier === 'silver') return 20 - rewardData.totalVerifications;
     return 0;
@@ -128,7 +128,7 @@ export default function DashboardPage() {
             <CardContent>
               <Progress value={getTierProgress()} className="h-2" />
               <p className="text-xs text-muted-foreground mt-2">
-                {rewardData?.tier === 'gold' ? "You've reached the highest tier!" : `${pointsToNextTier() * 10} points to next tier`}
+                {rewardData?.tier === 'gold' ? "You've reached the highest tier!" : `${verificationsToNextTier()} more verifications to next tier`}
               </p>
             </CardContent>
           </Card>
